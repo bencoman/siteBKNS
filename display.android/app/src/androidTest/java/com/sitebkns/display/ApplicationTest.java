@@ -1,4 +1,4 @@
-package com.pixplicity.bluetoothdemo;
+package com.sitebkns.display;
 
 import android.app.Application;
 import android.test.ApplicationTestCase;
