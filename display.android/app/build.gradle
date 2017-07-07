@@ -24,4 +24,5 @@ dependencies {
     compile 'com.android.support:appcompat-v7:22.2.1'
         //compile 'com.neovisionaries:nv-bluetooth:1.8'
     compile 'com.github.TakahikoKawasaki:nv-bluetooth:master'
+    compile 'com.android.support.constraint:constraint-layout:1.0.2'
 }

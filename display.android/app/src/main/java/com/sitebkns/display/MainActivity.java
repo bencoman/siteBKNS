@@ -22,6 +22,7 @@ import android.support.v7.app.AppCompatActivity;
 import android.view.View;
 import android.view.View.OnClickListener;
 import android.widget.Button;
+import android.widget.EditText;
 import android.widget.ProgressBar;
 import android.widget.TextView;
 
@@ -193,4 +194,17 @@ public class MainActivity extends AppCompatActivity implements LeScanCallback {
         }
         return new String(hexChars);
     }
+
+    //======================
+    // ACTIVITY LINKS
+    //======================
+
+    /** Called when the user taps the Send button */
+    public static final String EXTRA_MESSAGE = "com.sitebkns.display.MESSAGE";
+    public void invokeSecondActivity(View view) {
+        Intent intent = new Intent(this, SecondActivity.class);
+        intent.putExtra(EXTRA_MESSAGE, "Hey there! Go Team BKNS...");
+        startActivity(intent);
+    }
+
 }

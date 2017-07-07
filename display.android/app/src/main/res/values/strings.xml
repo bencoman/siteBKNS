@@ -3,7 +3,7 @@
 
     <string name="action_settings">Settings</string>
 
-    <string name="button_scan">Scan for devices</string>
+    <string name="button_scan">Scan</string>
     <string name="hint_uuid">UUID or Mac address</string>
     <string name="bt_clear">Clear</string>
     <string name="toast_invalid_uuid">Invalid UUID or address entered. Please check it and try again.</string>
