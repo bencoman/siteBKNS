@@ -21,4 +21,8 @@
     <string name="tv_char_footnote">Make sure to change the UUIDs of characteristics A and B and of the service before running the code.</string>
     <string name="tv_char_default_value">…</string>
     <string name="bt_write">Write \'%s\'</string>
+
+    <string name="first_name">GIBRAN</string>
+    <string name="last_name">GAYTAN</string>
+
 </resources>

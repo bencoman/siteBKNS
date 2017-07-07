@@ -91,7 +91,7 @@ public class MainActivity extends AppCompatActivity implements LeScanCallback {
             // ...But that is not nice towards the user.
         }
 
-        startScan();  // 2017.07.07.BTC speed up code-test cycle.  Delete for normal app operation.
+        //startScan();  // 2017.07.07.BTC speed up code-test cycle.  Delete for normal app operation.
     }
 
 
@@ -204,6 +204,12 @@ public class MainActivity extends AppCompatActivity implements LeScanCallback {
     public void invokeSecondActivity(View view) {
         Intent intent = new Intent(this, SecondActivity.class);
         intent.putExtra(EXTRA_MESSAGE, "Hey there! Go Team BKNS...");
+        startActivity(intent);
+    }
+
+    CustomCanvasView customCanvasView;
+    public void invokeMapActivity(View view) {
+        Intent intent = new Intent(this, MapActivity.class);
         startActivity(intent);
     }
 
