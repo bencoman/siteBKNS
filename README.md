@@ -9,13 +9,13 @@ In the compressed timeframe of the hackthon, we'll not bother with feature branc
 
 Using Github Desktop as reference...
 Current branch = <yourname>
-1. Fetch origin
-2. Branch > Update from default branch
-3. Push to origin.
-4. Check the network graph looks as expected. 
-https://github.com/bencoman/siteBKNS/network
+1. Check the network graph looks as expected. https://github.com/bencoman/siteBKNS/network
+2. Fetch origin
+3. Branch > Update from default branch
+4. Push to origin.
+5. Check the network graph looks as expected. https://github.com/bencoman/siteBKNS/network
 
-
+Release Early, Release Often!
 
 
 
