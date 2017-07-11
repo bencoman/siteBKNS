@@ -36,10 +36,15 @@ enum BeaconTypes
     SurfaceMiningEquipmentBEACON = 4
 };
 
-// BEACON WIRE PACKET FORMAT VERSION 2
-// Deisgned per Anurag, Gosh, Bandyopadhyay, "GPS based Vehicular Collision Warning System using IEEE 802.15.4 MAC/PHY Standard"
+// BEACON WIRE PACKET FORMAT (VERSION 2)
+// With five character local name, there remain two spare bytes (according to "nRF Connect" android app)
+// Format aligned with... Anurag, Gosh, Bandyopadhyay, "GPS based Vehicular Collision Warning System using IEEE 802.15.4 MAC/PHY Standard"
+char * localName = "C9999";
+int LOCALNAMESIZE = sizeof(localName);      //use for strncpy()
+#define GPS_SCALE 100000
+
 typedef union   
-{   uint8_t       raw[27];  
+{   uint8_t           raw[27]; 
     struct 
     {   uint16_t      companyID ;                   // Ref https://www.bluetooth.com/specifications/assigned-numbers/company-identifiers
         uint16_t      gpsForwardBearing;            // Azimuth
@@ -51,37 +56,33 @@ typedef union
         uint8_t       sideExclusionZoneDistance;    // W, scale 1m
         uint8_t       packetVersion;                // This is siteBKNS Packet Format Version 2
     } fields;
-}custom_data_t;
+}beacon_data_t;
 
-// BEACON DUMMY DATA TO OBSERVE WIRE PROTOCOL DATA PACKING
-// with five character local name, there remain two spare bytes (according to "nRF Connect" android app)
-char * localName = "C9999";
-int LOCALNAMESIZE = sizeof(localName);          
-custom_data_t custom_data = 
-{ .fields = 
-  {   .companyID = 0xFFFF,                      // Reserved by Bluetooth Specification for internal testing
-      .gpsForwardBearing=0x1111,                // Azimuth, scale 1 degree
-      .gpsLatitute= 0x22222222,                 // X, scale 100000/0.00001m
-      .gpsLongitude=0x33333333,                 // Y, scale 100000/0.00001m
-      .gpsForwardSpeed=0x44,
-      .forwardExclusionZoneDistance = 0xAA,     // F, scale 1m, max 256
-      .rearExclusionZoneDistance = 0xBB,        // L, scale 1m, max 256
-      .sideExclusionZoneDistance = 0xCC,        // W, scale 1m, max 256 
-      .packetVersion = 0x02                     // This is siteBKNS packet format VERSION 2
-  }
-};
+// BEACON DEFAULT DATA CAN BE USED TO OBSERVE ALIGNMENT PACKING OF WIRE PROTOCOL  
+beacon_data_t myBeaconData = 
+  { .fields = 
+      {     .companyID                    = 0xFFFF,    //reserved by Bluetooth Specification for internal testing
+            .gpsForwardBearing            = 0x1111,
+            .gpsLatitute                  = 0x22222222,
+            .gpsLongitude                 = 0x33333333,
+            .gpsForwardSpeed              = 0x44,
+            .forwardExclusionZoneDistance = 0xAA,
+            .rearExclusionZoneDistance    = 0xBB,
+            .sideExclusionZoneDistance    = 0xCC,
+            .packetVersion                = 2
+      }
+  };
 
 // BLE GAP ADVERTISING CONFIGURATION
-
-static esp_ble_adv_data_t _adv_config = {
+static esp_ble_adv_data_t advertisement_config = {
         .set_scan_rsp        = false,
         .include_name        = true,
         .include_txpower     = true,      // !!!! TX-power can help with backup distance calculation in GPS blackspots
         .min_interval        = 512,
         .max_interval        = 1024,
         .appearance          = 0,
-        .manufacturer_len    = 0,
-        .p_manufacturer_data = NULL,
+        .manufacturer_len    = sizeof(beacon_data_t),
+        .p_manufacturer_data = myBeaconData.raw,    //update myBeaconData then call esp_ble_gap_config_adv_data(&advertisement_config) 
         .service_data_len    = 0,
         .p_service_data      = NULL,
         .service_uuid_len    = 0,
@@ -89,7 +90,7 @@ static esp_ble_adv_data_t _adv_config = {
         .flag                = (ESP_BLE_ADV_FLAG_GEN_DISC|ESP_BLE_ADV_FLAG_BREDR_NOT_SPT)
 };
 
-static esp_ble_adv_params_t _adv_params = {
+static esp_ble_adv_params_t advertisement_params = {
         .adv_int_min         = 512,
         .adv_int_max         = 1024,
         .adv_type            = ADV_TYPE_NONCONN_IND,
@@ -100,20 +101,18 @@ static esp_ble_adv_params_t _adv_params = {
         .adv_filter_policy   = ADV_FILTER_ALLOW_SCAN_ANY_CON_ANY,
 };
 
-uint32_t counter = 0;
+/////////////////////////
+// BLE SUPPORT FUNCTIONS
 
-// BLE FUNCTIONS
-
-static void _on_gap(esp_gap_ble_cb_event_t event, esp_ble_gap_cb_param_t *param){
+static void 
+_on_gap(esp_gap_ble_cb_event_t event, esp_ble_gap_cb_param_t *param){
     if(event == ESP_GAP_BLE_ADV_DATA_SET_COMPLETE_EVT){
-        esp_ble_gap_start_advertising(&_adv_params);
-        Serial.println();
+        esp_ble_gap_start_advertising(&advertisement_params);
     }
-    Serial.print(".");
-    Serial.print(counter);
 }
 
-static bool _init_gap(const char * name){
+static bool 
+initialize_ble_gap(const char * name){
     if(!btStarted() && !btStart()){
         log_e("btStart failed");
         return false;
@@ -139,9 +138,7 @@ static bool _init_gap(const char * name){
         return false;
     }
 
-    _adv_config.p_manufacturer_data = custom_data.raw;
-    _adv_config.manufacturer_len = sizeof(custom_data_t);
-    if(esp_ble_gap_config_adv_data(&_adv_config)){
+    if(esp_ble_gap_config_adv_data(&advertisement_config)){
         log_e("gap_config_adv_data failed");
         return false;
     }
@@ -154,9 +151,31 @@ static bool _init_gap(const char * name){
     return true;
 }
 
-// ARDUINO FUNCTIONS
+///////////////////////////
+// GPS INPUT PARSING
 
-void setup() {
+void 
+gps_read_into( beacon_data_t * beaconData)
+{   
+    static long counter = 0;  //example only
+    counter = counter + 1;    //example only
+    Serial.println(counter);
+    //@Nancy, can you fill out the following with real GPS info?
+    beaconData->fields.gpsForwardBearing            = counter;
+    beaconData->fields.gpsLatitute                  = beaconData->fields.gpsLatitute;  // times by GPS_SCALE;
+    beaconData->fields.gpsLongitude                 = beaconData->fields.gpsLongitude; // times by GPS_SCALE;
+    beaconData->fields.gpsForwardSpeed              = beaconData->fields.gpsForwardSpeed;
+    beaconData->fields.forwardExclusionZoneDistance = beaconData->fields.forwardExclusionZoneDistance;
+    beaconData->fields.rearExclusionZoneDistance    = beaconData->fields.rearExclusionZoneDistance;
+    beaconData->fields.sideExclusionZoneDistance    = beaconData->fields.sideExclusionZoneDistance;
+}
+
+ 
+//////////////////////////////
+// ARDUINO SUPPORT FUNCTIONS
+
+void 
+setup() {
     Serial.begin(115200);
     Serial.setDebugOutput(true);
     pinMode(LED_BUILTIN, OUTPUT);
@@ -164,13 +183,14 @@ void setup() {
     Serial.println(ESP.getSdkVersion());
     //esp_log_level_set("*", ESP_LOG_VERBOSE);
 
-    //ble.begin("WEMOS SimpleBLE");
-    _init_gap("C9999");
+    initialize_ble_gap("C9999");
  }
 
-void loop() {
-    counter = counter + 1;
-    if(esp_ble_gap_config_adv_data(&_adv_config))
+
+void 
+loop() {
+    gps_read_into( &myBeaconData );
+    if(esp_ble_gap_config_adv_data(&advertisement_config))
     {   log_e("gap_config_adv_data failed");
         exit(1);
     }
