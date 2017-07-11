@@ -1,14 +1,5 @@
-// 2017.07.10.BenComan - Evolving1SimpleBleDevice - test use "nRF Connect" scanner on android
-//    Started with https://github.com/espressif/arduino-esp32/blob/master/libraries/SimpleBLE/examples/SimpleBleDevice/SimpleBleDevice.ino
-//    evolved by replacing "ble.begin()" with "_init_gap()" from https://github.com/espressif/arduino-esp32/blob/master/libraries/SimpleBLE/src/SimpleBLE.cpp
-//    and then chasing down unknown symbols. No other changes. Behaviour is identical to SimpleBleDevice.ino.
-// 2017.07.11.BenComan - Evolving2SimpleBleDevice
-//    Modified to advertise static custom data. Ref https://docs.mbed.com/docs/ble-intros/en/latest/Advanced/CustomGAP/
-// 2017.07.11.BenComan - Evolving3SimpleBleDevice
-//    Removed "Local Name" (ID to be handled in application packet format.)
-//    Experimented to determine maximimum size of Advertising Data /     
-// 2017.07.11.BenComan - Evolving4SimpleBleDevice
-//    Modified to advertise dynamic custom data. Restored "Local Name" since its easier to identify on nRFConnect scanner.
+// 2017.07.11.BenComan - Derived Evolving4SimpleBleDevice
+//    Added GPS structure 
 
 // Copyright 2015-2016 Espressif Systems (Shanghai) PTE LTD
 //
@@ -24,10 +15,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Sketch shows how SimpleBLE to advertise the name of the device and change it on button press
-// Usefull if you want to advertise some short message
-// Button is attached between GPIO 0 and GND and modes are switched with each press
-
+#include "SimpleBLE.h"
 #include "esp32-hal-log.h"
 
 #include "bt.h"
@@ -41,21 +29,50 @@
 #include "btc_manage.h"
 #include "btc_gap_ble.h"
 
-typedef union custom_data_u 
-{   uint8_t       raw[10];
+enum BeaconTypes
+{   ConeBEACON = 1,
+    PersonnelBEACON = 2,
+    LightVehicleBEACON = 3,   
+    SurfaceMiningEquipmentBEACON = 4
+};
+
+// BEACON WIRE PACKET FORMAT VERSION 2
+// Deisgned per Anurag, Gosh, Bandyopadhyay, "GPS based Vehicular Collision Warning System using IEEE 802.15.4 MAC/PHY Standard"
+typedef union   
+{   uint8_t       raw[27];  
     struct 
-    {   uint16_t      companyID;    //as reported by "Nordic nRF Connect" android app
-        uint8_t       customdata[24];
+    {   uint16_t      companyID ;                   // Ref https://www.bluetooth.com/specifications/assigned-numbers/company-identifiers
+        uint16_t      gpsForwardBearing;            // Azimuth
+        uint32_t      gpsLatitute;                  // X, scale 100000/0.00001m
+        uint32_t      gpsLongitude;                 // Y, scale 100000/0.00001m
+        uint8_t       gpsForwardSpeed;              //    scale 1m (not part of exclusion zone calcualtion)
+        uint8_t       forwardExclusionZoneDistance; // F, scale 1m
+        uint8_t       rearExclusionZoneDistance;    // L, scale 1m 
+        uint8_t       sideExclusionZoneDistance;    // W, scale 1m
+        uint8_t       packetVersion;                // This is siteBKNS Packet Format Version 2
     } fields;
 }custom_data_t;
 
+// BEACON DUMMY DATA TO OBSERVE WIRE PROTOCOL DATA PACKING
+// with five character local name, there remain two spare bytes (according to "nRF Connect" android app)
+char * localName = "C9999";
+int LOCALNAMESIZE = sizeof(localName);          
 custom_data_t custom_data = 
 { .fields = 
-  {   .companyID = 0xFFFF, //reserved by Bluetooth Specification for internal testing
-      .customdata = {0} //24 bytes available inplied by nRFConnect android app showing that many 
+  {   .companyID = 0xFFFF,                      // Reserved by Bluetooth Specification for internal testing
+      .gpsForwardBearing=0x1111,                // Azimuth, scale 1 degree
+      .gpsLatitute= 0x22222222,                 // X, scale 100000/0.00001m
+      .gpsLongitude=0x33333333,                 // Y, scale 100000/0.00001m
+      .gpsForwardSpeed=0x44,
+      .forwardExclusionZoneDistance = 0xAA,     // F, scale 1m, max 256
+      .rearExclusionZoneDistance = 0xBB,        // L, scale 1m, max 256
+      .sideExclusionZoneDistance = 0xCC,        // W, scale 1m, max 256 
+      .packetVersion = 0x02                     // This is siteBKNS packet format VERSION 2
   }
 };
-    
+
+// BLE GAP ADVERTISING CONFIGURATION
+
 static esp_ble_adv_data_t _adv_config = {
         .set_scan_rsp        = false,
         .include_name        = true,
@@ -83,10 +100,17 @@ static esp_ble_adv_params_t _adv_params = {
         .adv_filter_policy   = ADV_FILTER_ALLOW_SCAN_ANY_CON_ANY,
 };
 
+uint32_t counter = 0;
+
+// BLE FUNCTIONS
+
 static void _on_gap(esp_gap_ble_cb_event_t event, esp_ble_gap_cb_param_t *param){
     if(event == ESP_GAP_BLE_ADV_DATA_SET_COMPLETE_EVT){
         esp_ble_gap_start_advertising(&_adv_params);
+        Serial.println();
     }
+    Serial.print(".");
+    Serial.print(counter);
 }
 
 static bool _init_gap(const char * name){
@@ -139,13 +163,13 @@ void setup() {
     Serial.print("ESP32 SDK: ");
     Serial.println(ESP.getSdkVersion());
     //esp_log_level_set("*", ESP_LOG_VERBOSE);
-    _init_gap("CONE9999");
-}
 
-int counter = 0;
+    //ble.begin("WEMOS SimpleBLE");
+    _init_gap("C9999");
+ }
+
 void loop() {
     counter = counter + 1;
-    custom_data.fields.customdata[0] = counter;
     if(esp_ble_gap_config_adv_data(&_adv_config))
     {   log_e("gap_config_adv_data failed");
         exit(1);
