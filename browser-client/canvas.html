@@ -1,0 +1,201 @@
+<style>
+#myCanvas {
+	background-image: background.png;
+}
+
+
+</style>
+
+<canvas id="myCanvas" width="300" height="450" style="border:1px solid black; background: url('background.png')"></canvas>
+
+
+<script src="https://code.jquery.com/jquery-3.2.1.min.js"></script>
+
+
+
+
+
+<script>
+
+
+
+
+function getData() {
+$.ajax({
+	  type: 'POST',
+	  url: "http://192.168.43.200",
+	  //data: postedData,
+	  success: function(result) {
+	  
+		$("#output").append(result);
+		console.log("Polling for data.");
+	  }
+	});
+}
+
+$(document).ready(function() {
+
+
+	getData();
+	
+	
+
+	
+	
+
+	
+	
+	
+	
+});
+
+
+setInterval(getData, 1000);
+	
+	
+function turnOn() {
+	$.ajax({
+	  type: 'GET',
+	  url: "http://192.168.43.200/L",
+	  //data: postedData,
+	  success: function(result) {
+		//$("#output").html(result);
+		console.log("on");
+	  }
+	});
+	
+}
+
+function turnOff() {
+	$.ajax({
+	  type: 'GET',
+	  url: "http://192.168.43.200/H",
+	  //data: postedData,
+	  success: function(result) {
+		//$("#output").html(result);
+		console.log("off");
+	  }
+	});
+	
+}
+
+	
+	$("a").click(function(e) {
+		e.preventDefault();
+		console.log("HERE");
+
+	});
+
+
+
+
+
+function positionLabel(loc) {
+	return {x: loc.x + 10, y: loc.y + 5}
+}
+
+function pushNotification() {
+	var canvas = document.getElementById("myCanvas");
+	var context = canvas.getContext("2d");
+	
+	context.clearRect(0, 0, canvas.width, canvas.height);
+	
+	console.log("Hello World");
+	
+	context.fillStyle = "red";
+	//context.stroke();
+	
+	
+	context.font = '14pt Calibri';
+	context.fillText('Push Notification Received', 25, 400);
+	context.fillText('Proximity Breach', 25, 420);
+	context.fill();
+}
+
+
+
+
+
+
+	var width = 300;
+	var height = 450;
+	
+	var RADIUS_CONE = 5;
+	var RADIUS_LV = 10;
+	var RADIUS_DANGER = 50;
+
+	var canvas = document.getElementById("myCanvas");
+	var context = canvas.getContext("2d");
+	
+	context.beginPath();
+	var loc = {x:50, y:50}
+	context.arc(loc.x,loc.y,RADIUS_CONE, 0, Math.PI*2);
+	context.font = '10pt Calibri';
+	labelLoc = positionLabel(loc)
+	context.fillText('GPS: N25, E35', labelLoc.x, labelLoc.y);
+	context.stroke();
+	
+	context.beginPath();
+	var loc = {x:200, y: 350}
+	context.arc(loc.x, loc.y ,RADIUS_DANGER, 0, Math.PI*2);
+	context.font = '10pt Calibri';
+	labelLoc = positionLabel(loc)
+	context.fillText('GPS: N25, E35', labelLoc.x, labelLoc.y);
+	context.stroke();
+	
+	context.beginPath();
+	var loc = {x:100, y: 150}
+	context.arc(loc.x, loc.y ,RADIUS_LV, 0, Math.PI*2);
+	context.font = '10pt Calibri';
+	labelLoc = positionLabel(loc)
+	context.fillText('GPS: N25, E35', labelLoc.x, labelLoc.y);
+	context.stroke();
+
+	context.beginPath();
+    context.moveTo(150,200);
+    context.lineTo(135,225);
+    context.lineTo(165,225);
+    context.fill();
+	
+	context.font = '12pt Arial';
+	context.fillText('User ID: User', 20, 400);
+	context.fillText('Elevation:50M', 20, 415);
+	context.fillText('Coordinates: N25, E25', 20, 430);
+	
+	//context.stroke();
+	
+	
+function receiveGPS() {
+	context.beginPath();
+	var loc = {x:99, y: 99}
+	context.arc(loc.x, loc.y ,RADIUS_CONE, 0, Math.PI*2);
+	context.font = '10pt Calibri';
+	labelLoc = positionLabel(loc)
+	context.fillText('GPS: N25, E35', labelLoc.x, labelLoc.y);
+	context.stroke();
+}
+	
+</script>
+
+<br>
+<a href="#">Button 1</a>
+<a href="#">Button 2</a>
+<a href="#">Button 3</a>
+
+
+<br>
+Use Cases
+<a href="#" onclick="pushNotification()">Push Notification Received</a>
+<a href="#" onclick="receiveGPS()">Receive GPS</a>
+
+<br>
+
+<h2>Stretch Challenge: 
+
+<a href="#" onclick="turnOn()">ON</a>
+<a href="#" onclick="turnOff()">OFF</a>
+
+
+
+
+<div id="output"></div>
