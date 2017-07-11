@@ -1,14 +1,14 @@
-// 2017.07.10.BenComan 
-//    Starting withhttps://github.com/espressif/arduino-esp32/blob/master/libraries/SimpleBLE/examples/SimpleBleDevice/SimpleBleDevice.ino
+// 2017.07.10.BenComan - Evolving1SimpleBleDevice - test use "nRF Connect" scanner on android
+//    Started with https://github.com/espressif/arduino-esp32/blob/master/libraries/SimpleBLE/examples/SimpleBleDevice/SimpleBleDevice.ino
 //    evolved by replacing "ble.begin()" with "_init_gap()" from https://github.com/espressif/arduino-esp32/blob/master/libraries/SimpleBLE/src/SimpleBLE.cpp
 //    and then chasing down unknown symbols. No other changes. Behaviour is identical to SimpleBleDevice.ino.
-// 2017.07.11.BenComan 
-//    Modified to broadcast custom data. Ref https://docs.mbed.com/docs/ble-intros/en/latest/Advanced/CustomGAP/
-// 2017.07.11.BenComan
+// 2017.07.11.BenComan - Evolving2SimpleBleDevice
+//    Modified to advertise static custom data. Ref https://docs.mbed.com/docs/ble-intros/en/latest/Advanced/CustomGAP/
+// 2017.07.11.BenComan - Evolving3SimpleBleDevice
 //    Removed "Local Name" (ID to be handled in application packet format.)
 //    Experimented to determine maximimum size of Advertising Data /     
-// 2017.07.11.BenComan
-//    Try make advertising data dynamic. Not yet working.
+// 2017.07.11.BenComan - Evolving4SimpleBleDevice
+//    Modified to advertise dynamic custom data. Restored "Local Name" since its easier to identify on nRFConnect scanner.
 
 // Copyright 2015-2016 Espressif Systems (Shanghai) PTE LTD
 //
@@ -53,14 +53,14 @@ typedef union custom_data_u
 custom_data_t custom_data = 
 { .fields = 
   {   .companyID = 0xFFFF, //reserved by Bluetooth Specification for internal testing
-      .customdata = {1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24} //maximum visible to nRFConnect android app
+      .customdata = {0} //24 bytes available inplied by nRFConnect android app showing that many 
   }
 };
     
 static esp_ble_adv_data_t _adv_config = {
         .set_scan_rsp        = false,
-        .include_name        = false,
-        .include_txpower     = true,
+        .include_name        = true,
+        .include_txpower     = true,      // !!!! TX-power can help with backup distance calculation in GPS blackspots
         .min_interval        = 512,
         .max_interval        = 1024,
         .appearance          = 0,
@@ -146,9 +146,11 @@ void setup() {
     pinMode(LED_BUILTIN, OUTPUT);
     Serial.print("ESP32 SDK: ");
     Serial.println(ESP.getSdkVersion());
+    //esp_log_level_set("*", ESP_LOG_VERBOSE);
+
     //ble.begin("WEMOS SimpleBLE");
-    //_init_gap("LOCAL NAME");
-}
+    _init_gap("CONE9999");
+ }
 
 int counter = 0;
 void loop() {
@@ -158,8 +160,6 @@ void loop() {
     {   log_e("gap_config_adv_data failed");
         exit(1);
     }
-    digitalWrite(LED_BUILTIN, HIGH);
-    delay(500);
-    digitalWrite(LED_BUILTIN, LOW);
-    delay(500);
+    delay(500); digitalWrite(LED_BUILTIN, HIGH); 
+    delay(500); digitalWrite(LED_BUILTIN, LOW);
 }
