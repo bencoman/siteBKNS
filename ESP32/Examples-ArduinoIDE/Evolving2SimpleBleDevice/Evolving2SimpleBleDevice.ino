@@ -1,9 +1,9 @@
-// 2017.07.10.BenComan 
-//    Starting withhttps://github.com/espressif/arduino-esp32/blob/master/libraries/SimpleBLE/examples/SimpleBleDevice/SimpleBleDevice.ino
+// 2017.07.10.BenComan - Evolving1SimpleBleDevice - test use "nRF Connect" scanner on android
+//    Started with https://github.com/espressif/arduino-esp32/blob/master/libraries/SimpleBLE/examples/SimpleBleDevice/SimpleBleDevice.ino
 //    evolved by replacing "ble.begin()" with "_init_gap()" from https://github.com/espressif/arduino-esp32/blob/master/libraries/SimpleBLE/src/SimpleBLE.cpp
 //    and then chasing down unknown symbols. No other changes. Behaviour is identical to SimpleBleDevice.ino.
-// 2017.07.11.BenComan 
-//    Modified to broadcast custom data. Ref https://docs.mbed.com/docs/ble-intros/en/latest/Advanced/CustomGAP/
+// 2017.07.11.BenComan - Evolving2SimpleBleDevice
+//    Modified to advertise static custom data. Ref https://docs.mbed.com/docs/ble-intros/en/latest/Advanced/CustomGAP/
 
 // Copyright 2015-2016 Espressif Systems (Shanghai) PTE LTD
 //
