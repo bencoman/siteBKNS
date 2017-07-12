@@ -1,0 +1,151 @@
+<html>
+<head>
+<style>
+	html,body {
+		height: 100%;
+		margin: 0;
+	}
+
+	#map {
+		min-height: 100%; 
+	}
+</style>
+<script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyBcD_pftL2K2Qg42StA1wZlsJsujsSmFAA"></script>
+<script>
+function displayCoordinates(pnt) {
+	var lat = pnt.lat();
+	lat = lat.toFixed(4);
+	var lng = pnt.lng();
+	lng = lng.toFixed(4);
+	console.log("{lat: " + lat + ", lng: " + lng + "}");
+}
+
+function addMarker(_position, _label, _map, _icon) {
+	var marker = new google.maps.Marker({
+		position: _position,
+		label: _label,
+		map: _map,
+		icon: _icon
+	});
+	
+	return marker;
+}
+
+function addCircle(_map, _radius, _color, _marker) {
+	var circle = new google.maps.Circle({
+		map: _map,
+		radius: _radius,    // 10 miles in metres
+		fillColor: _color
+	});
+	circle.bindTo('center', _marker, 'position');	
+	
+	return circle;
+}
+
+
+
+function initializeMap() {
+	// Area for BHP Billiton Mount Whaleback
+	var myLatLng = {lat: -23.3629, lng: 119.6993};
+	var mapCanvas = document.getElementById("map");
+	var mapOptions = {
+		center: myLatLng,
+		zoom: 16,
+		//mapTypeId: 'roadmap'
+		mapTypeId: 'hybrid'
+	};
+	
+	var map = new google.maps.Map(mapCanvas, mapOptions);
+	
+	var RADIUS_HUMAN = 50;
+	var RADIUS_LIGHT_VEHICLE = 150;
+	var COLOR_GREEN = '#00ff00';
+
+	var m1 = addMarker({lat: -23.3601, lng: 119.6940}, "Beacon 3", map, '');
+	var m2 = addMarker({lat: -23.3594, lng: 119.6962}, "Beacon 2", map, '');
+	var m3 = addMarker({lat: -23.3584, lng: 119.6982}, "Beacon 1", map, '');
+	var m3 = addMarker({lat: -23.3606, lng: 119.6954}, "Beacon 1", map, '');
+	var m3 = addMarker({lat: -23.3599, lng: 119.6974}, "Beacon 1", map, '');
+	var m3 = addMarker({lat: -23.3616, lng: 119.6950}, "Beacon 1", map, '');
+	var m3 = addMarker({lat: -23.3607, lng: 119.6970}, "Beacon 1", map, '');
+	var m3 = addMarker({lat: -23.3597, lng: 119.6991}, "Beacon 1", map, '');
+	
+	
+	var m87 = addMarker({lat: -23.3574, lng: 119.6952}, "Light Vehicle", map, "");
+	var c87 = addCircle(map, RADIUS_LIGHT_VEHICLE, COLOR_GREEN, m87);
+	
+	var m97 = addMarker({lat: -23.3701, lng: 119.7026}, "Karoline", map, "");
+	var c97 = addCircle(map, RADIUS_HUMAN, COLOR_GREEN, m97)
+	
+	var m98 = addMarker({lat: -23.3581, lng: 119.7078}, "Nancy", map, "");
+	var c98 = addCircle(map, RADIUS_HUMAN, COLOR_GREEN, m98)
+	
+	var m99 = addMarker({lat: -23.3619, lng: 119.6968}, "Sam", map, "");			
+	var c99 = addCircle(map, RADIUS_HUMAN, COLOR_GREEN, m99)
+			
+
+	
+	var communicationCoordinates = [
+		{lat: -23.3613, lng: 119.6964},
+		{lat: -23.3605, lng: 119.6966},
+		{lat: -23.3590, lng: 119.6973},
+		{lat: -23.3591, lng: 119.6965},
+		{lat: -23.3574, lng: 119.6952}
+	];
+
+
+
+	var communicationPath = new google.maps.Polyline({
+		path: communicationCoordinates,
+		geodesic: true,
+		strokeColor: '#FF0000',
+		strokeOpacity: 1.0,
+		strokeWeight: 2,
+		
+	});
+
+	communicationPath.setMap(map);
+	
+	
+	
+			
+	var vehicleMovementCoordinates = [	
+		{lat: -23.3711, lng: 119.6923},
+		{lat: -23.3675, lng: 119.6997},
+		{lat: -23.3639, lng: 119.7049},
+		{lat: -23.3584, lng: 119.7077}
+	];
+			
+	var lineSymbol = {
+		path: 'M 0,-1 0,1',
+		strokeOpacity: 1,
+		scale: 4
+	};
+			
+	var vehiclePath = new google.maps.Polyline({
+		path: vehicleMovementCoordinates,
+		geodesic: true,
+		strokeColor: '#FF0000',
+		strokeOpacity: 0.0,
+		strokeWeight: 2,
+		icons: [{
+			icon: lineSymbol,
+            offset: '0',
+            repeat: '25px'
+		}],
+	});
+
+	vehiclePath.setMap(map);
+	
+	google.maps.event.addListener(map, 'mousedown', function (event) {
+		displayCoordinates(event.latLng);               
+	});
+}
+
+google.maps.event.addDomListener(window, 'load', initializeMap);
+</script>
+</head>
+<body>
+<div id="map" style="width:100%;height:600px"></div>
+</body>
+</html>
