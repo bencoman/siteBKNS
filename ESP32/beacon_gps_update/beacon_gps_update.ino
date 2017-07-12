@@ -94,40 +94,40 @@ TinyGPS gps; // create gps object
 long lat, lon;
 
 void gps_setup(){
-  Serial2.begin(9600);
+  Serial2.begin(9600);   //Do not change, must match factory setting.
 }
  
 void 
 gps_read_into( beacon_data_t * beaconData) 
 {
-    Serial.print(".");
+    //Serial.print(".");
     if(Serial2.available())
     {
-    Serial.print(":");
-      int c = Serial2.read();
+    //Serial.print(":");
+      int c = Serial2.read();      
       if (gps.encode(c)) // do we have a valid gps data that we can encode
       {
-          Serial.print(",");
+          //Serial.print(",");
           gps.get_position(&lat,&lon); // get latitude and longitude
-          Serial.printf("Float Position - lat: %f lon: %f \n", flat, flon);
+          Serial.printf("Position - lat: %ld lon: %ld \n", lat, lon);
 
-          gps.get_position( &beaconData->fields.gpsLatitute, &beaconData->fields.gpsLongitude );
+          //gps.get_position( &beaconData->fields.gpsLatitute, &beaconData->fields.gpsLongitude );
 
 
           // returns speed in 100ths of a knot
-          speed = gps.speed();
+          //speed = gps.speed();
 
           // course in 100ths of a degree
-          course = gps.course();
+          //course = gps.course();
           
 
-          beaconData->fields.gpsForwardBearing            = beaconData->fields.gpsForwardBearing;
-          beaconData->fields.gpsLatitute                  = beaconData->fields.gpsLatitute;  // times by GPS_SCALE;
-          beaconData->fields.gpsLongitude                 = beaconData->fields.gpsLongitude; // times by GPS_SCALE;
-          beaconData->fields.gpsForwardSpeed              = beaconData->fields.gpsForwardSpeed;
-          beaconData->fields.forwardExclusionZoneDistance = beaconData->fields.forwardExclusionZoneDistance;
-          beaconData->fields.rearExclusionZoneDistance    = beaconData->fields.rearExclusionZoneDistance;
-          beaconData->fields.sideExclusionZoneDistance    = beaconData->fields.sideExclusionZoneDistance;
+          //beaconData->fields.gpsForwardBearing            = beaconData->fields.gpsForwardBearing;
+          //beaconData->fields.gpsLatitute                  = beaconData->fields.gpsLatitute;  // times by GPS_SCALE;
+          //beaconData->fields.gpsLongitude                 = beaconData->fields.gpsLongitude; // times by GPS_SCALE;
+          //beaconData->fields.gpsForwardSpeed              = beaconData->fields.gpsForwardSpeed;
+          //beaconData->fields.forwardExclusionZoneDistance = beaconData->fields.forwardExclusionZoneDistance;
+          //beaconData->fields.rearExclusionZoneDistance    = beaconData->fields.rearExclusionZoneDistance;
+          //beaconData->fields.sideExclusionZoneDistance    = beaconData->fields.sideExclusionZoneDistance;
  
 
          // Calculate Bearing
@@ -229,7 +229,7 @@ initialize_ble_gap(const char * name){
 
 void 
 setup() {
-    Serial.begin(115200);
+    Serial.begin(9600);
     Serial.setDebugOutput(true);
     pinMode(LED_BUILTIN, OUTPUT);
     Serial.print("ESP32 SDK: ");
@@ -241,18 +241,18 @@ setup() {
 
 
 void 
-loop() {
+loop() {   
     gps_read_into( &myBeaconData );
-    if(esp_ble_gap_config_adv_data(&advertisement_config))
-    {   log_e("gap_config_adv_data failed");
-        exit(1);
-    }
+    //if(esp_ble_gap_config_adv_data(&advertisement_config))
+    //{   log_e("gap_config_adv_data failed");
+    //    exit(1);
+    //}
     delay(500); digitalWrite(LED_BUILTIN, HIGH); 
     delay(500); digitalWrite(LED_BUILTIN, LOW);
 
           //delay(1000);
           
-    static long counter = 0;  //example only
-    counter = counter + 1;    //example only
-    myBeaconData.fields.watchdogCounter              = counter;
+    //static long counter = 0;  //example only
+    //counter = counter + 1;    //example only
+    //myBeaconData.fields.watchdogCounter              = counter;
 }
