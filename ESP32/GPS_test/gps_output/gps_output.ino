@@ -64,12 +64,11 @@ void loop(){
           //stats for function check (opt)
           gps.stats(&chars, &sentences, &failed_checksum);
           
-          if (fix_age == TinyGPS::GPS_INVALID_AGE)
-          Serial.println("No fix detected");
-          else if (fix_age > 5000)
-          Serial.println("Warning: possible stale data!");
-          else
-          Serial.println("Data is current.");
+//          if (fix_age == TinyGPS::GPS_INVALID_AGE)
+//          Serial.println("No fix detected");
+//          else if (fix_age > 5000)
+//          Serial.println("Warning: possible stale data!");
+//          //else Serial.print("Data is current.");
 
           // Calculate Bearing
           float Bearing(struct GeoLoc &a, struct GeoLoc &b) {
