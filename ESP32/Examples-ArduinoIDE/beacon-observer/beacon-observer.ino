@@ -449,6 +449,8 @@ void setup() {
     gattc_client_test();
   }
    pinMode(LED_BUILTIN, OUTPUT);
+   uint8_t myBTAddr = esp_bt_dev_get_address();
+   Serial.printf("###### %d #####\n", myBTAddr"); 
 }
 
 void loop() {

@@ -29,60 +29,9 @@
 #include "btc_manage.h"
 #include "btc_gap_ble.h"
 
-////////////// GPS
-#include "./TinyGPS.h"
-#include "HardwareSerial.h"
-HardwareSerial Serial2(2);
-
-float flat,flon, bearing; // create variable for latitude and longitude object
-unsigned long time, date, speed, course, distance
-
-TinyGPS gps; // create gps object
-
-
-struct loc {
-  float lat = 0.0;
-  float lon = 0.0;
-};
-
-typedef struct loc Loc;
-
-
-void gps_setup(){
-  Serial2.begin(115200);
-}
- 
-void gps_loop() {
-
-    if(Serial2.available()){
-      int c = Serial2.read();
-      if (gps.encode(c)){
-          gps.f_get_position(&flat,&flon); // get latitude and longitude
-          
-          // returns speed in 100ths of a knot
-          speed = gps.speed();
-
-          // course in 100ths of a degree
-          course = gps.course();
-          
-
-          Loc Ardloc;
-          Ardloc.lat = flat;
-          Ardloc.lon = flon;
-
-         // Calculate Bearing
-         // float Bearing(struct Loc &a, struct Loc &b) {
-         // float y = sin(b.lon-a.lon) * cos(b.lat);
-         // float x = cos(a.lat)*sin(b.lat) - sin(a.lat)*cos(b.lat)*cos(b.lon-a.lon);
-         // return atan2(y, x) * RADTODEG;
-          }
-   
-      }
-   } 
-}
-
-
-//////////////// END GPS
+///////////////////////////////////////
+///////////////// BEACON PACKET FORMAT
+///////////////////////////////////////
 
 enum BeaconTypes
 {   ConeBEACON = 1,
@@ -103,8 +52,8 @@ typedef union
     struct 
     {   uint16_t      companyID ;                   // Ref https://www.bluetooth.com/specifications/assigned-numbers/company-identifiers
         uint16_t      gpsForwardBearing;            // Azimuth
-        uint32_t      gpsLatitute;                  // X, scale 100000/0.00001m
-        uint32_t      gpsLongitude;                 // Y, scale 100000/0.00001m
+        long          gpsLatitute;                  // X, scale 100000/0.00001m
+        long          gpsLongitude;                 // Y, scale 100000/0.00001m
         uint8_t       gpsForwardSpeed;              //    scale 1m (not part of exclusion zone calcualtion)
         uint8_t       forwardExclusionZoneDistance; // F, scale 1m
         uint8_t       rearExclusionZoneDistance;    // L, scale 1m 
@@ -129,6 +78,72 @@ beacon_data_t myBeaconData =
             .watchdogCounter              = 0
       }
   };
+
+
+
+////////////// GPS
+#include "./TinyGPS.h"
+#include "HardwareSerial.h"
+HardwareSerial Serial2(2);
+
+float flat,flon, bearing; // create variable for latitude and longitude object
+unsigned long time, date, speed, course, distance;
+
+TinyGPS gps; // create gps object
+
+long lat, lon;
+
+void gps_setup(){
+  Serial2.begin(9600);
+}
+ 
+void 
+gps_read_into( beacon_data_t * beaconData) 
+{
+    Serial.print(".");
+    if(Serial2.available())
+    {
+    Serial.print(":");
+      int c = Serial2.read();
+      if (gps.encode(c)) // do we have a valid gps data that we can encode
+      {
+          Serial.print(",");
+          gps.get_position(&lat,&lon); // get latitude and longitude
+          Serial.printf("Float Position - lat: %f lon: %f \n", flat, flon);
+
+          gps.get_position( &beaconData->fields.gpsLatitute, &beaconData->fields.gpsLongitude );
+
+
+          // returns speed in 100ths of a knot
+          speed = gps.speed();
+
+          // course in 100ths of a degree
+          course = gps.course();
+          
+
+          beaconData->fields.gpsForwardBearing            = beaconData->fields.gpsForwardBearing;
+          beaconData->fields.gpsLatitute                  = beaconData->fields.gpsLatitute;  // times by GPS_SCALE;
+          beaconData->fields.gpsLongitude                 = beaconData->fields.gpsLongitude; // times by GPS_SCALE;
+          beaconData->fields.gpsForwardSpeed              = beaconData->fields.gpsForwardSpeed;
+          beaconData->fields.forwardExclusionZoneDistance = beaconData->fields.forwardExclusionZoneDistance;
+          beaconData->fields.rearExclusionZoneDistance    = beaconData->fields.rearExclusionZoneDistance;
+          beaconData->fields.sideExclusionZoneDistance    = beaconData->fields.sideExclusionZoneDistance;
+ 
+
+         // Calculate Bearing
+         // float Bearing(struct Loc &a, struct Loc &b) {
+         // float y = sin(b.lon-a.lon) * cos(b.lat);
+         // float x = cos(a.lat)*sin(b.lat) - sin(a.lat)*cos(b.lat)*cos(b.lon-a.lon);
+         // return atan2(y, x) * RADTODEG;
+         // } 
+      }
+   } 
+}
+
+
+//////////////// END GPS
+
+
 
 // BLE GAP ADVERTISING CONFIGURATION
 static esp_ble_adv_data_t advertisement_config = {
@@ -208,28 +223,6 @@ initialize_ble_gap(const char * name){
     return true;
 }
 
-///////////////////////////
-// GPS INPUT PARSING
-
-void 
-gps_read_into( beacon_data_t * beaconData)
-{   
-    static long counter = 0;  //example only
-    counter = counter + 1;    //example only
-    Serial.println(counter);
-    //filling with real GPS info
-    beaconData->fields.gpsForwardBearing            = beaconData->fields.gpsForwardBearing;
-    beaconData->fields.gpsLatitute                  = beaconData->fields.gpsLatitute;  // times by GPS_SCALE;
-    beaconData->fields.gpsLongitude                 = beaconData->fields.gpsLongitude; // times by GPS_SCALE;
-    beaconData->fields.gpsForwardSpeed              = beaconData->fields.gpsForwardSpeed;
-    beaconData->fields.forwardExclusionZoneDistance = beaconData->fields.forwardExclusionZoneDistance;
-    beaconData->fields.rearExclusionZoneDistance    = beaconData->fields.rearExclusionZoneDistance;
-    beaconData->fields.sideExclusionZoneDistance    = beaconData->fields.sideExclusionZoneDistance;
-    beaconData->fields.watchdogCounter              = counter;
-
-
-}
-
  
 //////////////////////////////
 // ARDUINO SUPPORT FUNCTIONS
@@ -249,7 +242,6 @@ setup() {
 
 void 
 loop() {
-    gps_loop()
     gps_read_into( &myBeaconData );
     if(esp_ble_gap_config_adv_data(&advertisement_config))
     {   log_e("gap_config_adv_data failed");
@@ -258,10 +250,9 @@ loop() {
     delay(500); digitalWrite(LED_BUILTIN, HIGH); 
     delay(500); digitalWrite(LED_BUILTIN, LOW);
 
-          // display position
-          //Serial.print("Position: ");
-          //Serial.print("lat: ");Serial.print(flat);Serial.print(" ");// print latitude
-          //Serial.print("lon: ");Serial.println(flon); // print longitude
           //delay(1000);
-
+          
+    static long counter = 0;  //example only
+    counter = counter + 1;    //example only
+    myBeaconData.fields.watchdogCounter              = counter;
 }
