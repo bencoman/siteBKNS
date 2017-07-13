@@ -19,6 +19,8 @@
 #include "esp32-hal-log.h"
 
 #include "bt.h"
+#include "esp_bt_device.h"
+#include "esp_bt_defs.h"
 #include "bta_api.h"
 #include "esp_gap_ble_api.h"
 #include "esp_gatts_api.h"
@@ -29,12 +31,19 @@
 #include "btc_manage.h"
 #include "btc_gap_ble.h"
 
+///////////////////////////////////////
+///////////////// BEACON PACKET FORMAT
+///////////////////////////////////////
+
 enum BeaconTypes
-{   ConeBEACON = 1,
-    PersonnelBEACON = 2,
-    LightVehicleBEACON = 3,   
-    SurfaceMiningEquipmentBEACON = 4
+{   UnconfiguredBEACON            = 0,
+    ConeBEACON                    = 1,
+    PersonnelBEACON               = 2,
+    LightVehicleBEACON            = 3,   
+    SurfaceMiningEquipmentBEACON  = 4
 };
+
+enum BeaconTypes beaconType;
 
 // BEACON WIRE PACKET FORMAT (VERSION 2)
 // With five character local name, there remain two spare bytes (according to "nRF Connect" android app)
@@ -48,13 +57,14 @@ typedef union
     struct 
     {   uint16_t      companyID ;                   // Ref https://www.bluetooth.com/specifications/assigned-numbers/company-identifiers
         uint16_t      gpsForwardBearing;            // Azimuth
-        uint32_t      gpsLatitute;                  // X, scale 100000/0.00001m
-        uint32_t      gpsLongitude;                 // Y, scale 100000/0.00001m
+        long          gpsLatitute;                  // X, scale 100000/0.00001m
+        long          gpsLongitude;                 // Y, scale 100000/0.00001m
         uint8_t       gpsForwardSpeed;              //    scale 1m (not part of exclusion zone calcualtion)
         uint8_t       forwardExclusionZoneDistance; // F, scale 1m
         uint8_t       rearExclusionZoneDistance;    // L, scale 1m 
         uint8_t       sideExclusionZoneDistance;    // W, scale 1m
         uint8_t       packetVersion;                // This is siteBKNS Packet Format Version 2
+        uint8_t       watchdogCounter;
     } fields;
 }beacon_data_t;
 
@@ -69,9 +79,85 @@ beacon_data_t myBeaconData =
             .forwardExclusionZoneDistance = 0xAA,
             .rearExclusionZoneDistance    = 0xBB,
             .sideExclusionZoneDistance    = 0xCC,
-            .packetVersion                = 2
+            .packetVersion                = 2,
+            .watchdogCounter              = 0
       }
   };
+
+
+
+////////////// GPS
+#include "./TinyGPS.h"
+#include "HardwareSerial.h"
+HardwareSerial Serial2(2);
+
+float flat,flon, bearing; // create variable for latitude and longitude object
+unsigned long time, date, speed, course, distance;
+
+TinyGPS gps; // create gps object
+
+long lat, lon;
+
+void 
+gps_setup(){
+  Serial2.begin(9600);   //Do not change, must match factory setting.
+}
+
+void
+gps_debug_passthrough()
+{
+    while (Serial2.available())         // If anything comes in Serial2 (pins 16-Rx & 17-Tx) 
+      {Serial.write(Serial2.read());};  // read it and send it out Serial (USB)
+    Serial.println();
+    Serial.println();
+}
+
+void 
+gps_read_into( beacon_data_t * beaconData) 
+{
+    //gps_debug_passthrough(); return;
+
+    while(Serial2.available())
+    {
+      int c = Serial2.read();      
+      if (gps.encode(c)) // do we have a valid gps data that we can encode
+      {
+          //gps.get_position(&lat,&lon); // get latitude and longitude
+          gps.get_position( &beaconData->fields.gpsLatitute, &beaconData->fields.gpsLongitude );
+          Serial.printf("Position - lat: %ld lon: %ld \n", beaconData->fields.gpsLatitute, beaconData->fields.gpsLongitude);
+
+
+
+          // returns speed in 100ths of a knot
+          //speed = gps.speed();
+
+          // course in 100ths of a degree
+          //course = gps.course();
+          
+
+          //beaconData->fields.gpsForwardBearing            = beaconData->fields.gpsForwardBearing;
+          //beaconData->fields.gpsLatitute                  = beaconData->fields.gpsLatitute;  // times by GPS_SCALE;
+          //beaconData->fields.gpsLongitude                 = beaconData->fields.gpsLongitude; // times by GPS_SCALE;
+          //beaconData->fields.gpsForwardSpeed              = beaconData->fields.gpsForwardSpeed;
+          //beaconData->fields.forwardExclusionZoneDistance = beaconData->fields.forwardExclusionZoneDistance;
+          //beaconData->fields.rearExclusionZoneDistance    = beaconData->fields.rearExclusionZoneDistance;
+          //beaconData->fields.sideExclusionZoneDistance    = beaconData->fields.sideExclusionZoneDistance;
+ 
+
+         // Calculate Bearing
+         // float Bearing(struct Loc &a, struct Loc &b) {
+         // float y = sin(b.lon-a.lon) * cos(b.lat);
+         // float x = cos(a.lat)*sin(b.lat) - sin(a.lat)*cos(b.lat)*cos(b.lon-a.lon);
+         // return atan2(y, x) * RADTODEG;
+         // } 
+      }
+   } 
+}
+
+
+//////////////// END GPS
+
+
 
 // BLE GAP ADVERTISING CONFIGURATION
 static esp_ble_adv_data_t advertisement_config = {
@@ -111,8 +197,15 @@ _on_gap(esp_gap_ble_cb_event_t event, esp_ble_gap_cb_param_t *param){
     }
 }
 
+static void
+set_gap_device_name(const char * name){
+    if(esp_ble_gap_set_device_name(name)){
+        log_e("gap_set_device_name failed");
+    }
+}
+
 static bool 
-initialize_ble_gap(const char * name){
+bluetooth_GAP_setup(const char * name){
     if(!btStarted() && !btStart()){
         log_e("btStart failed");
         return false;
@@ -132,11 +225,8 @@ initialize_ble_gap(const char * name){
             return false;
         }
     }
-    
-    if(esp_ble_gap_set_device_name(name)){
-        log_e("gap_set_device_name failed");
-        return false;
-    }
+
+    set_gap_device_name(name);
 
     if(esp_ble_gap_config_adv_data(&advertisement_config)){
         log_e("gap_config_adv_data failed");
@@ -151,49 +241,106 @@ initialize_ble_gap(const char * name){
     return true;
 }
 
-///////////////////////////
-// GPS INPUT PARSING
+void
+watchdog_into( beacon_data_t * beaconData )
+{
+    static long counter = 0;  
+    counter = counter + 1;    
+    beaconData->fields.watchdogCounter = counter;
+}
 
-void 
-gps_read_into( beacon_data_t * beaconData)
+
+
+/////////////////////////////////////////////////////
+// PROTOYPE DEMOSTRATION SUPPORT
+////////////////////////////////////////////////////
+
+enum BeaconDemoRoles
 {   
-    static long counter = 0;  //example only
-    counter = counter + 1;    //example only
-    Serial.println(counter);
-    //@Nancy, can you fill out the following with real GPS info?
-    beaconData->fields.gpsForwardBearing            = counter;
-    beaconData->fields.gpsLatitute                  = beaconData->fields.gpsLatitute;  // times by GPS_SCALE;
-    beaconData->fields.gpsLongitude                 = beaconData->fields.gpsLongitude; // times by GPS_SCALE;
-    beaconData->fields.gpsForwardSpeed              = beaconData->fields.gpsForwardSpeed;
-    beaconData->fields.forwardExclusionZoneDistance = beaconData->fields.forwardExclusionZoneDistance;
-    beaconData->fields.rearExclusionZoneDistance    = beaconData->fields.rearExclusionZoneDistance;
-    beaconData->fields.sideExclusionZoneDistance    = beaconData->fields.sideExclusionZoneDistance;
+    DemoUnknown = 00,
+    DemoCone1   = 10,
+    DemoPerson1 = 11,       
+    DemoLV1     = 12,
+    DemoSME1    = 13,
+    DemoCone2   = 20,
+    DemoPerson2 = 21,       
+    DemoLV2     = 22,
+    DemoSME2    = 23,
+};
+
+enum BeaconDemoRoles demoRole;
+
+//Preset name and beacon type for prototype demo.  Can post configure to show over-the-air configuration.
+void
+set_protoype_demo_role()
+{   
+    char board_address_s[40];  //slightly oversized
+    snprintf(board_address_s, sizeof(board_address_s), "BD ADDR: " ESP_BD_ADDR_STR "\n", ESP_BD_ADDR_HEX(esp_bt_dev_get_address()));
+    Serial.print(board_address_s);
+    if (strcmp("30:ae:a4:04:39:fa",board_address_s)) { //Demo Cone 1
+      Serial.println(" SET UP DEMO CONE 1");
+      beaconType = ConeBEACON;
+      set_gap_device_name("C0001");     
+    };
+    /*
+      switch(demoRole){
+      case DemoUnknown: break;
+      case DemoCone1: demoCone1_setup(); break;
+      case DemoPerson1: break;       
+      case DemoLV1: break;
+      case DemoSME1: break;
+      case DemoCone2: break;
+      case DemoPerson2: break;      
+      case DemoLV2: break;
+      case DemoSME2: break;
+     */
+}
+
+void
+demoCone1_setup()
+{
+  Serial.println("SETTING UP DEVICE FOR DEMO CONE 1");
+}
+
+void
+demoCone1_loop()
+{
+  
 }
 
  
 //////////////////////////////
 // ARDUINO SUPPORT FUNCTIONS
+//////////////////////////////
 
 void 
 setup() {
-    Serial.begin(115200);
+    Serial.begin(9600);
     Serial.setDebugOutput(true);
     pinMode(LED_BUILTIN, OUTPUT);
     Serial.print("ESP32 SDK: ");
     Serial.println(ESP.getSdkVersion());
     //esp_log_level_set("*", ESP_LOG_VERBOSE);
+    gps_setup();
+    bluetooth_GAP_setup("XXXXX"); //UNconfigure node name - five characters
 
-    initialize_ble_gap("C9999");
- }
-
+    //For prototype demonstration
+    set_protoype_demo_role();
+}
 
 void 
-loop() {
+loop() {   
+    // Fill the advertisement packet with GPS data
     gps_read_into( &myBeaconData );
-    if(esp_ble_gap_config_adv_data(&advertisement_config))
+    watchdog_into( &myBeaconData );
+
+    //The advertisement fires regularly after setup, just update the data it sends 
+    //advertisement_config.p_manufacturer_data field points to myBeaconData
+    if(esp_ble_gap_config_adv_data(&advertisement_config)) 
     {   log_e("gap_config_adv_data failed");
         exit(1);
     }
+    
     delay(500); digitalWrite(LED_BUILTIN, HIGH); 
     delay(500); digitalWrite(LED_BUILTIN, LOW);
 }

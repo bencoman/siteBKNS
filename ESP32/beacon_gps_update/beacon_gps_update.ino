@@ -192,7 +192,7 @@ _on_gap(esp_gap_ble_cb_event_t event, esp_ble_gap_cb_param_t *param){
 }
 
 static bool 
-initialize_ble_gap(const char * name){
+bluetooth_GAP_setup(const char * name){
     if(!btStarted() && !btStart()){
         log_e("btStart failed");
         return false;
@@ -244,24 +244,31 @@ setup() {
     Serial.println(ESP.getSdkVersion());
     //esp_log_level_set("*", ESP_LOG_VERBOSE);
     gps_setup();
-    initialize_ble_gap("C9999");
+    bluetooth_GAP_setup("C9999"); //The node name
  }
 
 
+void
+watchdog_into( beacon_data_t * beaconData )
+{
+    static long counter = 0;  
+    counter = counter + 1;    
+    beaconData->fields.watchdogCounter = counter;
+}
+
 void 
 loop() {   
+    // Fill the advertisement packet with GPS data
     gps_read_into( &myBeaconData );
+    watchdog_into( &myBeaconData );
 
-    if(esp_ble_gap_config_adv_data(&advertisement_config))
+    //The advertisement fires regularly after setup, just update the data it sends 
+    //advertisement_config.p_manufacturer_data field points to myBeaconData
+    if(esp_ble_gap_config_adv_data(&advertisement_config)) 
     {   log_e("gap_config_adv_data failed");
         exit(1);
     }
+    
     delay(500); digitalWrite(LED_BUILTIN, HIGH); 
     delay(500); digitalWrite(LED_BUILTIN, LOW);
-
-          //delay(1000);
-          
-    //static long counter = 0;  //example only
-    //counter = counter + 1;    //example only
-    //myBeaconData.fields.watchdogCounter              = counter;
 }
