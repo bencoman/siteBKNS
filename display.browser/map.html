@@ -1,0 +1,254 @@
+<html>
+
+<style>
+html, body {
+	height: 100%;
+	margin: 0;
+}
+
+#map {
+	min-height: 100%; 
+}
+</style>
+<div id = "map" style = "width: 100%; height: 600px"></div>
+
+
+
+<script>
+
+function displayCoordinates(pnt) {
+	var lat = pnt.lat();
+	lat = lat.toFixed(4);
+	var lng = pnt.lng();
+	lng = lng.toFixed(4);
+	console.log("{lat: " + lat + ", lng: " + lng + "}");
+}
+
+function addMarker(_position, _label, _map, _icon) {
+	var marker = new google.maps.Marker({
+		position: _position,
+		label: _label,
+		map: _map,
+		icon: _icon
+	});
+	
+	return marker;
+}
+
+
+
+function generateRectangleBounds(markerCoordinates, directionFacing) {
+	console.log(markerCoordinates);
+	console.log(markerCoordinates.lat);
+	console.log(markerCoordinates.lng);
+
+	bounds = {
+		north: markerCoordinates.lat + 0.00040,
+		south: markerCoordinates.lat - 0.00040,
+		east: markerCoordinates.lng + 0.00040,
+		west: markerCoordinates.lng - 0.00040
+	}
+
+	console.log(bounds);
+	switch(directionFacing){
+		case "N":
+			bounds.north = bounds.north + 0.00045;
+			break;
+
+		case "S":
+			bounds.south = bounds.south - 0.00045;
+			break;
+
+		case "E":
+			bounds.east = bounds.east + 0.00045;
+			break;
+
+		case "W":
+			bounds.west = bounds.west - 0.00045;
+			break;
+	}
+
+	console.log(bounds);
+	return bounds;
+}
+
+
+
+function addCircle(_map, _radius, _color, _marker) {
+	var circle = new google.maps.Circle({
+		map: _map,
+		radius: _radius,    // 10 miles in metres
+		fillColor: _color,
+		strokeWeight: 1,
+		strokeOpacity: 0
+	});
+	circle.bindTo('center', _marker, 'position');	
+	
+	return circle;
+}
+
+
+
+
+
+
+function initMap() {
+	var map = new google.maps.Map(
+		document.getElementById("map"), 
+		{
+			center: {
+				lat: -23.3608, 
+				lng: 119.6994
+			}, // Area for BHP Billiton Mount Whaleback
+			zoom: 17,
+			//mapTypeId: 'roadmap'
+			mapTypeId: 'hybrid'
+		}
+	);
+	
+
+	var RADIUS_HUMAN = 50;
+	var RADIUS_LIGHT_VEHICLE = 150;
+	var RADIUS_BEACON = 30;
+	var COLOR_GREEN = '#00ff00';
+	var COLOR_BLUE = 'blue';
+
+
+
+	var m0 = addCircle(map, RADIUS_BEACON, COLOR_BLUE, addMarker({lat: -23.3608, lng: 119.6973}, "Beacon A", map, ''));
+	var m1 = addCircle(map, RADIUS_BEACON, COLOR_BLUE, addMarker({lat: -23.3602, lng: 119.6983}, "Beacon B", map, ''));
+	var m2 = addCircle(map, RADIUS_BEACON, COLOR_BLUE, addMarker({lat: -23.3598, lng: 119.6992}, "Beacon C", map, ''));
+	var m4 = addCircle(map, RADIUS_BEACON, COLOR_BLUE, addMarker({lat: -23.3591, lng: 119.7002}, "Beacon D", map, ''));
+	var m5 = addCircle(map, RADIUS_BEACON, COLOR_BLUE, addMarker({lat: -23.3584, lng: 119.7010}, "Beacon E", map, ''));
+
+
+	var m6 = addCircle(map, RADIUS_BEACON, COLOR_BLUE, addMarker({lat: -23.3606, lng: 119.6926}, "Beacon 1", map, ''));
+	var m7 = addCircle(map, RADIUS_BEACON, COLOR_BLUE, addMarker({lat: -23.3601, lng: 119.6932}, "Beacon 2", map, ''));
+	var m8 = addCircle(map, RADIUS_BEACON, COLOR_BLUE, addMarker({lat: -23.3601, lng: 119.6943}, "Beacon 3", map, ''));
+	var m9 = addCircle(map, RADIUS_BEACON, COLOR_BLUE, addMarker({lat: -23.3596, lng: 119.6951}, "Beacon 4", map, ''));
+	var m9 = addCircle(map, RADIUS_BEACON, COLOR_BLUE, addMarker({lat: -23.3586, lng: 119.6953}, "Beacon 5", map, ''));
+	var m9 = addCircle(map, RADIUS_BEACON, COLOR_BLUE, addMarker({lat: -23.3581, lng: 119.6959}, "Beacon 6", map, ''));
+	
+
+
+
+
+
+	
+
+	
+	var m97 = addMarker({lat: -23.3635, lng: 119.7049}, "Karoline", map, "");
+	var c97 = addCircle(map, RADIUS_HUMAN, COLOR_GREEN, m97);
+	
+	var m98 = addMarker({lat: -23.3581, lng: 119.7078}, "Nancy", map, "");
+	var c98 = addCircle(map, RADIUS_HUMAN, COLOR_GREEN, m98);
+	
+	var m99 = addMarker({lat: -23.3619, lng: 119.6968}, "Sam", map, "");			
+	var c99 = addCircle(map, RADIUS_HUMAN, COLOR_GREEN, m99);
+			
+			
+
+
+
+
+
+	var lv01Coords = {lat: -23.3577, lng: 119.7024}
+	var lv01 = addMarker(lv01Coords, "Light Vehicle", map, "");
+	var rectangle = new google.maps.Rectangle({
+		strokeColor: 'black',
+		strokeOpacity: 0,
+		strokeWeight: 2,
+		fillColor: COLOR_GREEN,
+		fillOpacity: 0.35,
+		map: map,
+		bounds: generateRectangleBounds(lv01Coords, "W")
+	});
+
+	var lv02Coords = {lat: -23.3634, lng: 119.6909}
+	var lv02 = addMarker(lv02Coords, "Light Vehicle", map, "");
+	var rectangle = new google.maps.Rectangle({
+		strokeColor: 'black',
+		strokeOpacity: 0,
+		strokeWeight: 2,
+		fillColor: COLOR_GREEN,
+		fillOpacity: 0.35,
+		map: map,
+		bounds: generateRectangleBounds(lv02Coords, "E")
+	});
+
+	var lv03Coords = {lat: -23.3629, lng: 119.6939}
+	var lv03 = addMarker(lv03Coords, "Light Vehicle", map, "");
+	var rectangle = new google.maps.Rectangle({
+		strokeColor: 'black',
+		strokeOpacity: 0,
+		strokeWeight: 2,
+		fillColor: COLOR_GREEN,
+		fillOpacity: 0.35,
+		map: map,
+		bounds: generateRectangleBounds(lv03Coords, "S")
+	});
+
+
+
+
+
+
+
+
+
+
+
+	//--------------------------------------------------------------------------------
+	//--------------------------------------------------------------------------------
+
+
+
+	var communicationPath = new google.maps.Polyline({
+		path: [
+			{lat: -23.3614, lng: 119.6968},
+			{lat: -23.3605, lng: 119.6978},
+			{lat: -23.3600, lng: 119.6988},
+			{lat: -23.3594, lng: 119.6997},
+			{lat: -23.3588, lng: 119.7006},
+			{lat: -23.3581, lng: 119.7014}
+		],
+		geodesic: true,
+		strokeColor: COLOR_GREEN,
+		strokeOpacity: 1.0,
+		strokeWeight: 2,
+		
+	}).setMap(map);
+	
+	
+
+	var vehiclePath = new google.maps.Polyline({
+		path: [	
+			{lat: -23.3643, lng: 119.6977},
+			{lat: -23.3629, lng: 119.7006},
+			{lat: -23.3614, lng: 119.7033},
+			{lat: -23.3599, lng: 119.7059},
+			{lat: -23.3585, lng: 119.7074}
+		],
+		geodesic: true,
+		strokeColor: COLOR_BLUE,
+		strokeOpacity: 0.0,
+		strokeWeight: 2,
+		icons: [{
+			icon: {
+				path: 'M 0,-1 0,1',
+				strokeOpacity: 1,
+				scale: 4
+			},
+            offset: '0',
+            repeat: '20px'
+		}],
+	}).setMap(map);
+
+	
+	google.maps.event.addListener(map, 'mousedown', function (event) {
+		displayCoordinates(event.latLng);               
+	});
+}
+</script>
+<script src = "https://maps.googleapis.com/maps/api/js?key=AIzaSyBcD_pftL2K2Qg42StA1wZlsJsujsSmFAA&callback=initMap"></script>
+</html>
