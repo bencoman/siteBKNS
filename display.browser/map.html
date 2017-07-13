@@ -29,27 +29,24 @@ function addMarker(_position, _label, _map, _icon) {
 		position: _position,
 		label: _label,
 		map: _map,
-		icon: _icon
+		icon: {
+			path: _icon,
+			scale: 5,
+			strokeColor: 'blue'
+		}
 	});
 	
 	return marker;
 }
 
-
-
 function generateRectangleBounds(markerCoordinates, directionFacing) {
-	console.log(markerCoordinates);
-	console.log(markerCoordinates.lat);
-	console.log(markerCoordinates.lng);
-
 	bounds = {
-		north: markerCoordinates.lat + 0.00040,
-		south: markerCoordinates.lat - 0.00040,
-		east: markerCoordinates.lng + 0.00040,
-		west: markerCoordinates.lng - 0.00040
+		north: markerCoordinates.lat + 0.0006,
+		south: markerCoordinates.lat - 0.0006,
+		east: markerCoordinates.lng + 0.0006,
+		west: markerCoordinates.lng - 0.0006
 	}
 
-	console.log(bounds);
 	switch(directionFacing){
 		case "N":
 			bounds.north = bounds.north + 0.00045;
@@ -68,11 +65,8 @@ function generateRectangleBounds(markerCoordinates, directionFacing) {
 			break;
 	}
 
-	console.log(bounds);
 	return bounds;
 }
-
-
 
 function addCircle(_map, _radius, _color, _marker) {
 	var circle = new google.maps.Circle({
@@ -91,9 +85,47 @@ function addCircle(_map, _radius, _color, _marker) {
 
 
 
+var RADIUS_HUMAN = 80;
+var RADIUS_LIGHT_VEHICLE = 200;
+var RADIUS_BEACON = 60;
+var COLOR_GREEN = '#00ff00';
+var COLOR_BLUE = 'blue';
+
+
+var map;
+var m97;
+var c97;
+var m97_coords = {lat: -23.3635, lng: 119.7049}
+
+function moveBeacon() {
+	//console.log("Beacon Moving");
+
+	if (Math.random() * 1 > 0.5) {
+		m97_coords.lat = m97_coords.lat + Math.random() * 0.0005;
+		m97_coords.lng = m97_coords.lng + Math.random() * 0.0005;
+	} else {
+		m97_coords.lat = m97_coords.lat - Math.random() * 0.0005;
+		m97_coords.lng = m97_coords.lng - Math.random() * 0.0005;		
+	}
+
+
+	console.log(Math.random() * 0.01);
+	console.log(m97_coords);
+
+
+	m97.setMap(null);
+	c97.setMap(null);
+	m97 = addMarker(m97_coords, "Karoline", map, null);
+	c97 = addCircle(map, RADIUS_HUMAN, COLOR_GREEN, m97);
+	m97.setMap(map);
+	c97.setMap(map)
+}
+
+setInterval(moveBeacon.bind(m97), 1000);
+
 
 function initMap() {
-	var map = new google.maps.Map(
+	map = new google.maps.Map(
 		document.getElementById("map"), 
 		{
 			center: {
@@ -107,27 +139,23 @@ function initMap() {
 	);
 	
 
-	var RADIUS_HUMAN = 50;
-	var RADIUS_LIGHT_VEHICLE = 150;
-	var RADIUS_BEACON = 30;
-	var COLOR_GREEN = '#00ff00';
-	var COLOR_BLUE = 'blue';
 
 
 
-	var m0 = addCircle(map, RADIUS_BEACON, COLOR_BLUE, addMarker({lat: -23.3608, lng: 119.6973}, "Beacon A", map, ''));
-	var m1 = addCircle(map, RADIUS_BEACON, COLOR_BLUE, addMarker({lat: -23.3602, lng: 119.6983}, "Beacon B", map, ''));
-	var m2 = addCircle(map, RADIUS_BEACON, COLOR_BLUE, addMarker({lat: -23.3598, lng: 119.6992}, "Beacon C", map, ''));
-	var m4 = addCircle(map, RADIUS_BEACON, COLOR_BLUE, addMarker({lat: -23.3591, lng: 119.7002}, "Beacon D", map, ''));
-	var m5 = addCircle(map, RADIUS_BEACON, COLOR_BLUE, addMarker({lat: -23.3584, lng: 119.7010}, "Beacon E", map, ''));
+
+	var m0 = addCircle(map, RADIUS_BEACON, COLOR_BLUE, addMarker({lat: -23.3608, lng: 119.6973}, "Beacon A", map, google.maps.SymbolPath.FORWARD_OPEN_ARROW));
+	var m1 = addCircle(map, RADIUS_BEACON, COLOR_BLUE, addMarker({lat: -23.3602, lng: 119.6983}, "Beacon B", map, google.maps.SymbolPath.FORWARD_OPEN_ARROW));
+	var m2 = addCircle(map, RADIUS_BEACON, COLOR_BLUE, addMarker({lat: -23.3598, lng: 119.6992}, "Beacon C", map, google.maps.SymbolPath.FORWARD_OPEN_ARROW));
+	var m4 = addCircle(map, RADIUS_BEACON, COLOR_BLUE, addMarker({lat: -23.3591, lng: 119.7002}, "Beacon D", map, google.maps.SymbolPath.FORWARD_OPEN_ARROW));
+	var m5 = addCircle(map, RADIUS_BEACON, COLOR_BLUE, addMarker({lat: -23.3584, lng: 119.7010}, "Beacon E", map, google.maps.SymbolPath.FORWARD_OPEN_ARROW));
 
 
-	var m6 = addCircle(map, RADIUS_BEACON, COLOR_BLUE, addMarker({lat: -23.3606, lng: 119.6926}, "Beacon 1", map, ''));
-	var m7 = addCircle(map, RADIUS_BEACON, COLOR_BLUE, addMarker({lat: -23.3601, lng: 119.6932}, "Beacon 2", map, ''));
-	var m8 = addCircle(map, RADIUS_BEACON, COLOR_BLUE, addMarker({lat: -23.3601, lng: 119.6943}, "Beacon 3", map, ''));
-	var m9 = addCircle(map, RADIUS_BEACON, COLOR_BLUE, addMarker({lat: -23.3596, lng: 119.6951}, "Beacon 4", map, ''));
-	var m9 = addCircle(map, RADIUS_BEACON, COLOR_BLUE, addMarker({lat: -23.3586, lng: 119.6953}, "Beacon 5", map, ''));
-	var m9 = addCircle(map, RADIUS_BEACON, COLOR_BLUE, addMarker({lat: -23.3581, lng: 119.6959}, "Beacon 6", map, ''));
+	var m6 = addCircle(map, RADIUS_BEACON, COLOR_BLUE, addMarker({lat: -23.3606, lng: 119.6926}, "Beacon 1", map, google.maps.SymbolPath.FORWARD_OPEN_ARROW));
+	var m7 = addCircle(map, RADIUS_BEACON, COLOR_BLUE, addMarker({lat: -23.3601, lng: 119.6932}, "Beacon 2", map, google.maps.SymbolPath.FORWARD_OPEN_ARROW));
+	var m8 = addCircle(map, RADIUS_BEACON, COLOR_BLUE, addMarker({lat: -23.3601, lng: 119.6943}, "Beacon 3", map, google.maps.SymbolPath.FORWARD_OPEN_ARROW));
+	var m9 = addCircle(map, RADIUS_BEACON, COLOR_BLUE, addMarker({lat: -23.3596, lng: 119.6951}, "Beacon 4", map, google.maps.SymbolPath.FORWARD_OPEN_ARROW));
+	var m9 = addCircle(map, RADIUS_BEACON, COLOR_BLUE, addMarker({lat: -23.3586, lng: 119.6953}, "Beacon 5", map, google.maps.SymbolPath.FORWARD_OPEN_ARROW));
+	var m9 = addCircle(map, RADIUS_BEACON, COLOR_BLUE, addMarker({lat: -23.3581, lng: 119.6959}, "Beacon 6", map, google.maps.SymbolPath.FORWARD_OPEN_ARROW));
 	
 
 
@@ -137,23 +165,24 @@ function initMap() {
 	
 
 	
-	var m97 = addMarker({lat: -23.3635, lng: 119.7049}, "Karoline", map, "");
-	var c97 = addCircle(map, RADIUS_HUMAN, COLOR_GREEN, m97);
+	m97 = addMarker(m97_coords, "Karoline", map, null);
+	c97 = addCircle(map, RADIUS_HUMAN, COLOR_GREEN, m97);
 	
-	var m98 = addMarker({lat: -23.3581, lng: 119.7078}, "Nancy", map, "");
+	var m98 = addMarker({lat: -23.3581, lng: 119.7078}, "Nancy", map, null);
 	var c98 = addCircle(map, RADIUS_HUMAN, COLOR_GREEN, m98);
 	
-	var m99 = addMarker({lat: -23.3619, lng: 119.6968}, "Sam", map, "");			
+	var m99 = addMarker({lat: -23.3619, lng: 119.6968}, "Sam", map, null);			
 	var c99 = addCircle(map, RADIUS_HUMAN, COLOR_GREEN, m99);
 			
-			
+	var m100 = addMarker({lat: -23.3620, lng: 119.70}, "Ben", map, null);			
+	var c100 = addCircle(map, RADIUS_HUMAN, COLOR_GREEN, m100);
 
 
 
 
 
 	var lv01Coords = {lat: -23.3577, lng: 119.7024}
-	var lv01 = addMarker(lv01Coords, "Light Vehicle", map, "");
+	var lv01 = addMarker(lv01Coords, "Light Vehicle", map, null);
 	var rectangle = new google.maps.Rectangle({
 		strokeColor: 'black',
 		strokeOpacity: 0,
@@ -165,7 +194,7 @@ function initMap() {
 	});
 
 	var lv02Coords = {lat: -23.3634, lng: 119.6909}
-	var lv02 = addMarker(lv02Coords, "Light Vehicle", map, "");
+	var lv02 = addMarker(lv02Coords, "Light Vehicle", map, null);
 	var rectangle = new google.maps.Rectangle({
 		strokeColor: 'black',
 		strokeOpacity: 0,
@@ -177,7 +206,7 @@ function initMap() {
 	});
 
 	var lv03Coords = {lat: -23.3629, lng: 119.6939}
-	var lv03 = addMarker(lv03Coords, "Light Vehicle", map, "");
+	var lv03 = addMarker(lv03Coords, "Light Vehicle", map, null);
 	var rectangle = new google.maps.Rectangle({
 		strokeColor: 'black',
 		strokeOpacity: 0,
@@ -206,14 +235,14 @@ function initMap() {
 	var communicationPath = new google.maps.Polyline({
 		path: [
 			{lat: -23.3614, lng: 119.6968},
-			{lat: -23.3605, lng: 119.6978},
+			{lat: -23.3607, lng: 119.6978},
 			{lat: -23.3600, lng: 119.6988},
 			{lat: -23.3594, lng: 119.6997},
 			{lat: -23.3588, lng: 119.7006},
 			{lat: -23.3581, lng: 119.7014}
 		],
 		geodesic: true,
-		strokeColor: COLOR_GREEN,
+		strokeColor: 'yellow',
 		strokeOpacity: 1.0,
 		strokeWeight: 2,
 		
@@ -230,7 +259,7 @@ function initMap() {
 			{lat: -23.3585, lng: 119.7074}
 		],
 		geodesic: true,
-		strokeColor: COLOR_BLUE,
+		strokeColor: 'orange',
 		strokeOpacity: 0.0,
 		strokeWeight: 2,
 		icons: [{
