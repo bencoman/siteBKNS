@@ -8,8 +8,8 @@ long lat,lon; // create variable for latitude and longitude object
 TinyGPS gps; // create gps object
  
 void setup(){
-  Serial.begin(9600); // connect serial
-  Serial2.begin(9600);
+  Serial.begin(115200); // connect serial
+  Serial2.begin(9600);  // must stay at this factory setting
 
 }
  
