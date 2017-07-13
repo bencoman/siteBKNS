@@ -96,22 +96,30 @@ long lat, lon;
 void gps_setup(){
   Serial2.begin(9600);   //Do not change, must match factory setting.
 }
- 
+
+void
+gps_debug_passthrough()
+{
+    while (Serial2.available())         // If anything comes in Serial2 (pins 16-Rx & 17-Tx) 
+      {Serial.write(Serial2.read());};  // read it and send it out Serial (USB)
+    Serial.println();
+    Serial.println();
+}
+
 void 
 gps_read_into( beacon_data_t * beaconData) 
 {
-    //Serial.print(".");
-    if(Serial2.available())
+    //gps_debug_passthrough(); return;
+
+    while(Serial2.available())
     {
-    //Serial.print(":");
       int c = Serial2.read();      
       if (gps.encode(c)) // do we have a valid gps data that we can encode
       {
-          //Serial.print(",");
-          gps.get_position(&lat,&lon); // get latitude and longitude
-          Serial.printf("Position - lat: %ld lon: %ld \n", lat, lon);
+          //gps.get_position(&lat,&lon); // get latitude and longitude
+          gps.get_position( &beaconData->fields.gpsLatitute, &beaconData->fields.gpsLongitude );
+          Serial.printf("Position - lat: %ld lon: %ld \n", beaconData->fields.gpsLatitute, beaconData->fields.gpsLongitude);
 
-          //gps.get_position( &beaconData->fields.gpsLatitute, &beaconData->fields.gpsLongitude );
 
 
           // returns speed in 100ths of a knot
@@ -229,7 +237,7 @@ initialize_ble_gap(const char * name){
 
 void 
 setup() {
-    Serial.begin(9600);
+    Serial.begin(115200);
     Serial.setDebugOutput(true);
     pinMode(LED_BUILTIN, OUTPUT);
     Serial.print("ESP32 SDK: ");
@@ -243,10 +251,11 @@ setup() {
 void 
 loop() {   
     gps_read_into( &myBeaconData );
-    //if(esp_ble_gap_config_adv_data(&advertisement_config))
-    //{   log_e("gap_config_adv_data failed");
-    //    exit(1);
-    //}
+
+    if(esp_ble_gap_config_adv_data(&advertisement_config))
+    {   log_e("gap_config_adv_data failed");
+        exit(1);
+    }
     delay(500); digitalWrite(LED_BUILTIN, HIGH); 
     delay(500); digitalWrite(LED_BUILTIN, LOW);
 
