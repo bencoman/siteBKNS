@@ -254,6 +254,7 @@ watchdog_into( beacon_data_t * beaconData )
 /////////////////////////////////////////////////////
 // PROTOYPE DEMOSTRATION SUPPORT
 ////////////////////////////////////////////////////
+int blinkRate = 1000;
 
 enum BeaconDemoRoles
 {   
@@ -280,8 +281,17 @@ set_protoype_demo_role()
     if (strcmp("30:ae:a4:04:39:fa",board_address_s)) { //Demo Cone 1
       Serial.println(" SET UP DEMO CONE 1");
       beaconType = ConeBEACON;
-      set_gap_device_name("C0001");     
+      set_gap_device_name("C0001");  
+      blinkRate = 250;   
     };
+    if (strcmp("24:0a:c4:05:b1:42",board_address_s)) { //Demo Cone 1
+      Serial.println(" SET UP DEMO CONE 1");
+      beaconType = PersonnelBEACON;
+      set_gap_device_name("P0099");   
+      blinkRate = 500;  
+    };
+
+    
     /*
       switch(demoRole){
       case DemoUnknown: break;
@@ -333,14 +343,17 @@ loop() {
     // Fill the advertisement packet with GPS data
     gps_read_into( &myBeaconData );
     watchdog_into( &myBeaconData );
-
+    
     //The advertisement fires regularly after setup, just update the data it sends 
     //advertisement_config.p_manufacturer_data field points to myBeaconData
     if(esp_ble_gap_config_adv_data(&advertisement_config)) 
     {   log_e("gap_config_adv_data failed");
         exit(1);
     }
+
     
-    delay(500); digitalWrite(LED_BUILTIN, HIGH); 
-    delay(500); digitalWrite(LED_BUILTIN, LOW);
+
+    
+    delay(blinkRate); digitalWrite(LED_BUILTIN, HIGH); 
+    delay(blinkRate); digitalWrite(LED_BUILTIN, LOW);
 }
