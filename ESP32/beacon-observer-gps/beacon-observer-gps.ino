@@ -49,6 +49,50 @@ static void esp_gattc_cb(esp_gattc_cb_event_t event, esp_gatt_if_t gattc_if, esp
 static void gattc_profile_a_event_handler(esp_gattc_cb_event_t event, esp_gatt_if_t gattc_if, esp_ble_gattc_cb_param_t *param);
 static void gattc_profile_b_event_handler(esp_gattc_cb_event_t event, esp_gatt_if_t gattc_if, esp_ble_gattc_cb_param_t *param);
 
+// BEACON WIRE PACKET FORMAT (VERSION 2)
+// With five character local name, there remain two spare bytes (according to "nRF Connect" android app)
+// Format aligned with... Anurag, Gosh, Bandyopadhyay, "GPS based Vehicular Collision Warning System using IEEE 802.15.4 MAC/PHY Standard"
+char * localName = "C9999";
+int LOCALNAMESIZE = sizeof(localName);      //use for strncpy()
+#define GPS_SCALE 100000
+
+int enableScanning = 0;
+
+typedef union   
+{   uint8_t           raw[27]; 
+    struct 
+    {   uint16_t      companyID ;                   // Ref https://www.bluetooth.com/specifications/assigned-numbers/company-identifiers
+        uint16_t      gpsForwardBearing;            // Azimuth
+        long          gpsLatitute;                  // X, scale 100000/0.00001m
+        long          gpsLongitude;                 // Y, scale 100000/0.00001m
+        uint8_t       gpsForwardSpeed;              //    scale 1m (not part of exclusion zone calcualtion)
+        uint8_t       forwardExclusionZoneDistance; // F, scale 1m
+        uint8_t       rearExclusionZoneDistance;    // L, scale 1m 
+        uint8_t       sideExclusionZoneDistance;    // W, scale 1m
+        uint8_t       packetVersion;                // This is siteBKNS Packet Format Version 2
+        uint8_t       watchdogCounter;
+    } fields;
+}beacon_data_t;
+
+// BEACON DEFAULT DATA CAN BE USED TO OBSERVE ALIGNMENT PACKING OF WIRE PROTOCOL  
+beacon_data_t otherBeaconData; 
+beacon_data_t myBeaconData = 
+  { .fields = 
+      {     .companyID                    = 0xFFFF,    //reserved by Bluetooth Specification for internal testing
+            .gpsForwardBearing            = 0x1111,
+            .gpsLatitute                  = 0x22222222,
+            .gpsLongitude                 = 0x33333333,
+            .gpsForwardSpeed              = 0x44,
+            .forwardExclusionZoneDistance = 0xAA,
+            .rearExclusionZoneDistance    = 0xBB,
+            .sideExclusionZoneDistance    = 0xCC,
+            .packetVersion                = 2,
+            .watchdogCounter              = 0
+      }
+  };
+
+
+ ///// END BEACON WIRE PACKET FORMAT
 
 static esp_gatt_srvc_id_t alert_service_id = {
     .id = {
@@ -113,14 +157,14 @@ static void gattc_profile_a_event_handler(esp_gattc_cb_event_t event, esp_gatt_i
 
     switch (event) {
     case ESP_GATTC_REG_EVT:
-        Serial.printf("REG_EVT\n");
+        //Serial.printf("REG_EVT\n");
         esp_ble_gap_set_scan_params(&ble_scan_params);
         break;
     case ESP_GATTC_OPEN_EVT:
         conn_id = p_data->open.conn_id;
 
         memcpy(gl_profile_tab[PROFILE_A_APP_ID].remote_bda, p_data->open.remote_bda, sizeof(esp_bd_addr_t));
-        Serial.printf("ESP_GATTC_OPEN_EVT conn_id %d, if %d, status %d, mtu %d\n", conn_id, gattc_if, p_data->open.status, p_data->open.mtu);
+        //Serial.printf("ESP_GATTC_OPEN_EVT conn_id %d, if %d, status %d, mtu %d\n", conn_id, gattc_if, p_data->open.status, p_data->open.mtu);
 
         Serial.printf("REMOTE BDA  %02x:%02x:%02x:%02x:%02x:%02x\n",
                             gl_profile_tab[PROFILE_A_APP_ID].remote_bda[0], gl_profile_tab[PROFILE_A_APP_ID].remote_bda[1], 
@@ -133,11 +177,11 @@ static void gattc_profile_a_event_handler(esp_gattc_cb_event_t event, esp_gatt_i
     case ESP_GATTC_SEARCH_RES_EVT: {
         esp_gatt_srvc_id_t *srvc_id = &p_data->search_res.srvc_id;
         conn_id = p_data->search_res.conn_id;
-        Serial.printf("SEARCH RES: conn_id = %x\n", conn_id);
+        //Serial.printf("SEARCH RES: conn_id = %x\n", conn_id);
         if (srvc_id->id.uuid.len == ESP_UUID_LEN_16) {
-            Serial.printf("UUID16: %x\n", srvc_id->id.uuid.uuid.uuid16);
+            //Serial.printf("UUID16: %x\n", srvc_id->id.uuid.uuid.uuid16);
         } else if (srvc_id->id.uuid.len == ESP_UUID_LEN_32) {
-            Serial.printf("UUID32: %x\n", srvc_id->id.uuid.uuid.uuid32);
+            //Serial.printf("UUID32: %x\n", srvc_id->id.uuid.uuid.uuid32);
         } else if (srvc_id->id.uuid.len == ESP_UUID_LEN_128) {
             Serial.printf("UUID128: %x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x\n", srvc_id->id.uuid.uuid.uuid128[0],
                      srvc_id->id.uuid.uuid.uuid128[1], srvc_id->id.uuid.uuid.uuid128[2], srvc_id->id.uuid.uuid.uuid128[3],
@@ -146,24 +190,24 @@ static void gattc_profile_a_event_handler(esp_gattc_cb_event_t event, esp_gatt_i
                      srvc_id->id.uuid.uuid.uuid128[10], srvc_id->id.uuid.uuid.uuid128[11], srvc_id->id.uuid.uuid.uuid128[12],
                      srvc_id->id.uuid.uuid.uuid128[13], srvc_id->id.uuid.uuid.uuid128[14], srvc_id->id.uuid.uuid.uuid128[15]);
         } else {
-            Serial.printf("ERROR: UNKNOWN LEN %d\n", srvc_id->id.uuid.len);
+            //Serial.printf("ERROR: UNKNOWN LEN %d\n", srvc_id->id.uuid.len);
         }
         break;
     }
     case ESP_GATTC_SEARCH_CMPL_EVT:
         conn_id = p_data->search_cmpl.conn_id;
-        Serial.printf("SEARCH_CMPL: conn_id = %x, status %d\n", conn_id, p_data->search_cmpl.status);
+        //Serial.printf("SEARCH_CMPL: conn_id = %x, status %d\n", conn_id, p_data->search_cmpl.status);
         esp_ble_gattc_get_characteristic(gattc_if, conn_id, &alert_service_id, NULL);
         break;
     case ESP_GATTC_GET_CHAR_EVT:
         if (p_data->get_char.status != ESP_GATT_OK) {
             break;
         }
-        Serial.printf("GET CHAR: conn_id = %x, status %d\n", p_data->get_char.conn_id, p_data->get_char.status);
-        Serial.printf("GET CHAR: srvc_id = %04x, char_id = %04x\n", p_data->get_char.srvc_id.id.uuid.uuid.uuid16, p_data->get_char.char_id.uuid.uuid.uuid16);
+        //Serial.printf("GET CHAR: conn_id = %x, status %d\n", p_data->get_char.conn_id, p_data->get_char.status);
+        //Serial.printf("GET CHAR: srvc_id = %04x, char_id = %04x\n", p_data->get_char.srvc_id.id.uuid.uuid.uuid16, p_data->get_char.char_id.uuid.uuid.uuid16);
 
         if (p_data->get_char.char_id.uuid.uuid.uuid16 == 0x2a46) {
-            Serial.printf("register notify\n");
+            //Serial.printf("register notify\n");
             esp_ble_gattc_register_for_notify(gattc_if, gl_profile_tab[PROFILE_A_APP_ID].remote_bda, &alert_service_id, &p_data->get_char.char_id);
         }
 
@@ -171,8 +215,8 @@ static void gattc_profile_a_event_handler(esp_gattc_cb_event_t event, esp_gatt_i
         break;
     case ESP_GATTC_REG_FOR_NOTIFY_EVT: {
         uint16_t notify_en = 1;
-        Serial.printf("REG FOR NOTIFY: status %d\n", p_data->reg_for_notify.status);
-        Serial.printf("REG FOR_NOTIFY: srvc_id = %04x, char_id = %04x\n", p_data->reg_for_notify.srvc_id.id.uuid.uuid.uuid16, p_data->reg_for_notify.char_id.uuid.uuid.uuid16);
+        //Serial.printf("REG FOR NOTIFY: status %d\n", p_data->reg_for_notify.status);
+        //Serial.printf("REG FOR_NOTIFY: srvc_id = %04x, char_id = %04x\n", p_data->reg_for_notify.srvc_id.id.uuid.uuid.uuid16, p_data->reg_for_notify.char_id.uuid.uuid.uuid16);
 
         esp_ble_gattc_write_char_descr(
                 gattc_if,
@@ -187,10 +231,10 @@ static void gattc_profile_a_event_handler(esp_gattc_cb_event_t event, esp_gatt_i
         break;
     }
     case ESP_GATTC_NOTIFY_EVT:
-        Serial.printf("NOTIFY: len %d, value %08x\n", p_data->notify.value_len, *(uint32_t *)p_data->notify.value);
+        //Serial.printf("NOTIFY: len %d, value %08x\n", p_data->notify.value_len, *(uint32_t *)p_data->notify.value);
         break;
     case ESP_GATTC_WRITE_DESCR_EVT:
-        Serial.printf("WRITE: status %d\n", p_data->write.status);
+        //Serial.printf("WRITE: status %d\n", p_data->write.status);
         break;
     default:
         break;
@@ -204,13 +248,13 @@ static void gattc_profile_b_event_handler(esp_gattc_cb_event_t event, esp_gatt_i
 
     switch (event) {
     case ESP_GATTC_REG_EVT:
-        Serial.printf("REG_EVT\n");
+        //Serial.printf("REG_EVT\n");
         break;
     case ESP_GATTC_OPEN_EVT:
         conn_id = p_data->open.conn_id;
 
         memcpy(gl_profile_tab[PROFILE_B_APP_ID].remote_bda, p_data->open.remote_bda, sizeof(esp_bd_addr_t));
-        Serial.printf("ESP_GATTC_OPEN_EVT conn_id %d, if %d, status %d, mtu %d\n", conn_id, gattc_if, p_data->open.status, p_data->open.mtu);
+        //Serial.printf("ESP_GATTC_OPEN_EVT conn_id %d, if %d, status %d, mtu %d\n", conn_id, gattc_if, p_data->open.status, p_data->open.mtu);
 
         Serial.printf("REMOTE BDA  %02x:%02x:%02x:%02x:%02x:%02x\n",
                             gl_profile_tab[PROFILE_B_APP_ID].remote_bda[0], gl_profile_tab[PROFILE_B_APP_ID].remote_bda[1], 
@@ -223,11 +267,11 @@ static void gattc_profile_b_event_handler(esp_gattc_cb_event_t event, esp_gatt_i
     case ESP_GATTC_SEARCH_RES_EVT: {
         esp_gatt_srvc_id_t *srvc_id = &p_data->search_res.srvc_id;
         conn_id = p_data->search_res.conn_id;
-        Serial.printf("SEARCH RES: conn_id = %x\n", conn_id);
+        //Serial.printf("SEARCH RES: conn_id = %x\n", conn_id);
         if (srvc_id->id.uuid.len == ESP_UUID_LEN_16) {
-            Serial.printf("UUID16: %x\n", srvc_id->id.uuid.uuid.uuid16);
+            //Serial.printf("UUID16: %x\n", srvc_id->id.uuid.uuid.uuid16);
         } else if (srvc_id->id.uuid.len == ESP_UUID_LEN_32) {
-            Serial.printf("UUID32: %x\n", srvc_id->id.uuid.uuid.uuid32);
+            //Serial.printf("UUID32: %x\n", srvc_id->id.uuid.uuid.uuid32);
         } else if (srvc_id->id.uuid.len == ESP_UUID_LEN_128) {
             Serial.printf("UUID128: %x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x\n", srvc_id->id.uuid.uuid.uuid128[0],
                      srvc_id->id.uuid.uuid.uuid128[1], srvc_id->id.uuid.uuid.uuid128[2], srvc_id->id.uuid.uuid.uuid128[3],
@@ -236,24 +280,24 @@ static void gattc_profile_b_event_handler(esp_gattc_cb_event_t event, esp_gatt_i
                      srvc_id->id.uuid.uuid.uuid128[10], srvc_id->id.uuid.uuid.uuid128[11], srvc_id->id.uuid.uuid.uuid128[12],
                      srvc_id->id.uuid.uuid.uuid128[13], srvc_id->id.uuid.uuid.uuid128[14], srvc_id->id.uuid.uuid.uuid128[15]);
         } else {
-            Serial.printf("ERROR: UNKNOWN LEN %d\n", srvc_id->id.uuid.len);
+            //Serial.printf("ERROR: UNKNOWN LEN %d\n", srvc_id->id.uuid.len);
         }
         break;
     }
     case ESP_GATTC_SEARCH_CMPL_EVT:
         conn_id = p_data->search_cmpl.conn_id;
-        Serial.printf("SEARCH_CMPL: conn_id = %x, status %d\n", conn_id, p_data->search_cmpl.status);
+        //Serial.printf("SEARCH_CMPL: conn_id = %x, status %d\n", conn_id, p_data->search_cmpl.status);
         esp_ble_gattc_get_characteristic(gattc_if, conn_id, &alert_service_id, NULL);
         break;
     case ESP_GATTC_GET_CHAR_EVT:
         if (p_data->get_char.status != ESP_GATT_OK) {
             break;
         }
-        Serial.printf("GET CHAR: conn_id = %x, status %d\n", p_data->get_char.conn_id, p_data->get_char.status);
-        Serial.printf("GET CHAR: srvc_id = %04x, char_id = %04x\n", p_data->get_char.srvc_id.id.uuid.uuid.uuid16, p_data->get_char.char_id.uuid.uuid.uuid16);
+        //Serial.printf("GET CHAR: conn_id = %x, status %d\n", p_data->get_char.conn_id, p_data->get_char.status);
+        //Serial.printf("GET CHAR: srvc_id = %04x, char_id = %04x\n", p_data->get_char.srvc_id.id.uuid.uuid.uuid16, p_data->get_char.char_id.uuid.uuid.uuid16);
 
         if (p_data->get_char.char_id.uuid.uuid.uuid16 == 0x2a46) {
-            Serial.printf("register notify\n");
+            //Serial.printf("register notify\n");
             esp_ble_gattc_register_for_notify(gattc_if, gl_profile_tab[PROFILE_B_APP_ID].remote_bda, &alert_service_id, &p_data->get_char.char_id);
         }
 
@@ -261,8 +305,8 @@ static void gattc_profile_b_event_handler(esp_gattc_cb_event_t event, esp_gatt_i
         break;
     case ESP_GATTC_REG_FOR_NOTIFY_EVT: {
         uint16_t notify_en = 1;
-        Serial.printf("REG FOR NOTIFY: status %d\n", p_data->reg_for_notify.status);
-        Serial.printf("REG FOR_NOTIFY: srvc_id = %04x, char_id = %04x\n", p_data->reg_for_notify.srvc_id.id.uuid.uuid.uuid16, p_data->reg_for_notify.char_id.uuid.uuid.uuid16);
+        //Serial.printf("REG FOR NOTIFY: status %d\n", p_data->reg_for_notify.status);
+        //Serial.printf("REG FOR_NOTIFY: srvc_id = %04x, char_id = %04x\n", p_data->reg_for_notify.srvc_id.id.uuid.uuid.uuid16, p_data->reg_for_notify.char_id.uuid.uuid.uuid16);
 
         esp_ble_gattc_write_char_descr(
                 gattc_if,
@@ -277,10 +321,10 @@ static void gattc_profile_b_event_handler(esp_gattc_cb_event_t event, esp_gatt_i
         break;
     }
     case ESP_GATTC_NOTIFY_EVT:
-        Serial.printf("NOTIFY: len %d, value %08x\n", p_data->notify.value_len, *(uint32_t *)p_data->notify.value);
+        //Serial.printf("NOTIFY: len %d, value %08x\n", p_data->notify.value_len, *(uint32_t *)p_data->notify.value);
         break;
     case ESP_GATTC_WRITE_DESCR_EVT:
-        Serial.printf("WRITE: status %d\n", p_data->write.status);
+        //Serial.printf("WRITE: status %d\n", p_data->write.status);
         break;
     default:
         break;
@@ -291,9 +335,10 @@ static void esp_gap_cb(esp_gap_ble_cb_event_t event, esp_ble_gap_cb_param_t *par
 {
     uint8_t *adv_name = NULL;
     uint8_t adv_name_len = 0;
+    Serial.print("b"); 
     switch (event) {
     case ESP_GAP_BLE_SCAN_PARAM_SET_COMPLETE_EVT: {
-        //the unit of the duration is second
+        //the unit of the duration in seconds
         esp_ble_gap_start_scanning(EACHSCANDURATION);
         break;
     }
@@ -317,77 +362,83 @@ static void esp_gap_cb(esp_gap_ble_cb_event_t event, esp_ble_gap_cb_param_t *par
         
         switch (scan_result->scan_rst.search_evt) {
         case ESP_GAP_SEARCH_INQ_RES_EVT:
-Serial.printf("\n....search_evt=ESP_GAP_SEARCH_INQ_RES_EVT");
-Serial.printf("\n....bda=");
+//Serial.printf("\n....search_evt=ESP_GAP_SEARCH_INQ_RES_EVT");
+//Serial.printf("\n....bda=");
             for (int i = 0; i < 6; i++) {
-                Serial.printf("%x:", scan_result->scan_rst.bda[i]);
+                //Serial.printf("%x:", scan_result->scan_rst.bda[i]);
             }
-Serial.printf("\n");
+//Serial.printf("\n");
 
 
-Serial.printf("\n....(esp_gap_search_evt_t)search_evt=%d",   scan_result->scan_rst.search_evt);            /*!< Search event type */
+//Serial.printf("\n....(esp_gap_search_evt_t)search_evt=%d",   scan_result->scan_rst.search_evt);            /*!< Search event type */
 //Serial.printf("\n....(esp_bd_addr_t)bda=",                   scan_result->scan_rst.bda);                          /*!< Bluetooth device address which has been searched */
-Serial.printf("\n....(esp_bt_dev_type_t)dev_type=%x",        scan_result->scan_rst.dev_type);                 /*!< Device type */
-Serial.printf("\n....(esp_ble_addr_type_t)ble_addr_type=%x", scan_result->scan_rst.ble_addr_type);           /*!< Ble device address type */
-Serial.printf("\n....(esp_ble_evt_type_t)ble_evt_type=%x",   scan_result->scan_rst.ble_evt_type);           /*!< Ble scan result event type */
-Serial.printf("\n....(int)rssi=%d",                          scan_result->scan_rst.rssi);         /*!< Searched device's RSSI */
-Serial.printf("\n....(uint8_t)ble_adv=");
-for (int i = 0; i < scan_result->scan_rst.adv_data_len; i++) {
-  Serial.printf("%x:", scan_result->scan_rst.ble_adv[i]); 
+//Serial.printf("\n....(esp_bt_dev_type_t)dev_type=%x",        scan_result->scan_rst.dev_type);                 /*!< Device type */
+//Serial.printf("\n....(esp_ble_addr_type_t)ble_addr_type=%x", scan_result->scan_rst.ble_addr_type);           /*!< Ble device address type */
+//Serial.printf("\n....(esp_ble_evt_type_t)ble_evt_type=%x",   scan_result->scan_rst.ble_evt_type);           /*!< Ble scan result event type */
+//Serial.printf("\n....(int)rssi=%d",                          scan_result->scan_rst.rssi);         /*!< Searched device's RSSI */
+//Serial.printf("\n....(uint8_t)ble_adv=");
+//for (int i = 0; i < scan_result->scan_rst.adv_data_len; i++) {
+//  Serial.printf("%x:", scan_result->scan_rst.ble_adv[i]); 
+//}/*!< Received EIR */
+
+/////////////////////////////////////////////////////GET OTHER BEACON DATA /////////HEREE
+//Serial.printf("\n....OTHER BEACON DATA=");
+
+for (int i = 0; i < 19 ; i++) {
+  otherBeaconData.raw[i] = scan_result->scan_rst.ble_adv[i+12];
+  //Serial.printf("%x:", otherBeaconData.raw[i]); 
 }/*!< Received EIR */
-Serial.printf("\n....(int)flag=%x",                          scan_result->scan_rst.flag);         /*!< Advertising data flag bit */
-Serial.printf("\n....(int)num_resps=%d",                     scan_result->scan_rst.num_resps);         /*!< Scan result number */
-Serial.printf("\n....(uint8_t)adv_data_len=%d",               scan_result->scan_rst.adv_data_len);         /*!< Adv data length */
-Serial.printf("\n....(uint8_t)scan_rsp_len=%d",              scan_result->scan_rst.scan_rsp_len);         /*!< Scan response length */
-Serial.printf("\n");
+///////////////////////////////////////////////////////
+
+//Serial.printf("\n....(int)flag=%x",                          scan_result->scan_rst.flag);         /*!< Advertising data flag bit */
+//Serial.printf("\n....(int)num_resps=%d",                     scan_result->scan_rst.num_resps);         /*!< Scan result number */
+//Serial.printf("\n....(uint8_t)adv_data_len=%d",               scan_result->scan_rst.adv_data_len);         /*!< Adv data length */
+//Serial.printf("\n....(uint8_t)scan_rsp_len=%d",              scan_result->scan_rst.scan_rsp_len);         /*!< Scan response length */
+//Serial.printf("\n");
         
 
             adv_name = esp_ble_resolve_adv_data(scan_result->scan_rst.ble_adv,
                                                 ESP_BLE_AD_TYPE_NAME_CMPL, &adv_name_len);
-            Serial.printf("Searched Device Name Len %d\n", adv_name_len);
+            //Serial.printf("Searched Device Name Len %d\n", adv_name_len);
             for (int j = 0; j < adv_name_len; j++) {
-                Serial.printf("%c", adv_name[j]);
+                //Serial.printf("%c", adv_name[j]);
             }
-Serial.println("|__!!");
+//Serial.println("|__!!");
  
             if (adv_name != NULL) {
                 if (strcmp((char *)adv_name, device_name) == 0) {
-                    Serial.printf("Searched device %s\n", device_name);
+                    //Serial.printf("Searched device %s\n", device_name);
                     if (connect == false) {
                         connect = true;
-                        Serial.printf("Connect to the remote device.\n");
+                        //Serial.printf("Connect to the remote device.\n");
                         esp_ble_gap_stop_scanning();
                         esp_ble_gattc_open(gl_profile_tab[PROFILE_A_APP_ID].gattc_if, scan_result->scan_rst.bda, true);
                         esp_ble_gattc_open(gl_profile_tab[PROFILE_B_APP_ID].gattc_if, scan_result->scan_rst.bda, true);
                     }
                     else {
-                        Serial.println("NOCONNECT");
+                        //Serial.println("NOCONNECT");
                     }
                 }
             }
-Serial.println("#####10");
             break;
         case ESP_GAP_SEARCH_INQ_CMPL_EVT:
             Serial.println("#####11-ESP_GAP_SEARCH_INQ_CMPL_EVT");
             esp_ble_gap_start_scanning(EACHSCANDURATION);
             break;
         default:
-Serial.println("#####12");
         
             break;
         }
-Serial.println("#####13");
         break;
     }
     default:
-Serial.println("#####14");
         break;
     }
 }
 
 static void esp_gattc_cb(esp_gattc_cb_event_t event, esp_gatt_if_t gattc_if, esp_ble_gattc_cb_param_t *param)
 {
-    Serial.printf("EVT %d, gattc if %d\n", event, gattc_if);
+    //Serial.printf("EVT %d, gattc if %d\n", event, gattc_if);
 
     /* If event is register event, store the gattc_if for each profile */
     if (event == ESP_GATTC_REG_EVT) {
@@ -444,17 +495,104 @@ void gattc_client_test(void)
     ble_client_appRegister();
 }
 
+///////////////////////////////
+/////////////////////////// GPS
+///////////////////////////////
+
+#include "./TinyGPS.h"
+#include "HardwareSerial.h"
+HardwareSerial Serial2(2);
+
+float flat,flon, bearing; // create variable for latitude and longitude object
+unsigned long time, date, speed, course, distance;
+
+TinyGPS gps; // create gps object
+
+long lat, lon;
+
+void 
+gps_setup()
+{
+  Serial2.begin(9600);   //Do not change, must match factory setting.
+}
+
+void
+gps_debug_passthrough()
+{
+    while (Serial2.available())         // If anything comes in Serial2 (pins 16-Rx & 17-Tx) 
+      {Serial.write(Serial2.read());};  // read it and send it out Serial (USB)
+    Serial.println();
+    Serial.println();
+}
+
+void 
+gps_read_into( beacon_data_t * beaconData) 
+{
+    long xDist, yDist, distance;
+    //gps_debug_passthrough(); return;
+
+    while(Serial2.available())
+    {
+      int c = Serial2.read();      
+      if (gps.encode(c)) // do we have a valid gps data that we can encode
+      {
+          Serial.print("g");
+          //gps.get_position(&lat,&lon); // get latitude and longitude
+          gps.get_position( &beaconData->fields.gpsLatitute, &beaconData->fields.gpsLongitude );
+          //Serial.printf("My Position - lat: %ld lon: %ld   ", beaconData->fields.gpsLatitute, beaconData->fields.gpsLongitude);
+          //Serial.printf("Other Position - lat: %ld lon: %ld   ", otherBeaconData.fields.gpsLatitute, otherBeaconData.fields.gpsLongitude);
+          xDist = beaconData->fields.gpsLatitute - otherBeaconData.fields.gpsLatitute;
+          yDist = beaconData->fields.gpsLongitude - otherBeaconData.fields.gpsLongitude;
+          distance = sqrt((xDist*xDist) + (yDist*yDist));
+          Serial.printf("\nDistance - %fm !", distance/10.0);
+        
+          //HERE2
+
+
+          // returns speed in 100ths of a knot
+          //speed = gps.speed();
+
+          // course in 100ths of a degree
+          //course = gps.course();
+          
+
+          //beaconData->fields.gpsForwardBearing            = beaconData->fields.gpsForwardBearing;
+          //beaconData->fields.gpsLatitute                  = beaconData->fields.gpsLatitute;  // times by GPS_SCALE;
+          //beaconData->fields.gpsLongitude                 = beaconData->fields.gpsLongitude; // times by GPS_SCALE;
+          //beaconData->fields.gpsForwardSpeed              = beaconData->fields.gpsForwardSpeed;
+          //beaconData->fields.forwardExclusionZoneDistance = beaconData->fields.forwardExclusionZoneDistance;
+          //beaconData->fields.rearExclusionZoneDistance    = beaconData->fields.rearExclusionZoneDistance;
+          //beaconData->fields.sideExclusionZoneDistance    = beaconData->fields.sideExclusionZoneDistance;
+ 
+
+         // Calculate Bearing
+         // float Bearing(struct Loc &a, struct Loc &b) {
+         // float y = sin(b.lon-a.lon) * cos(b.lat);
+         // float x = cos(a.lat)*sin(b.lat) - sin(a.lat)*cos(b.lat)*cos(b.lon-a.lon);
+         // return atan2(y, x) * RADTODEG;
+         // } 
+      }
+   } 
+}
+
+//////////////// END GPS
+
+
+
 void setup() {
-  Serial.begin(115200);
+  Serial.begin(9600);
   if(btStart()){
     gattc_client_test();
   }
    pinMode(LED_BUILTIN, OUTPUT);
    //uint8_t myBTAddr = esp_bt_dev_get_address();
    //Serial.printf("###### %d #####\n", myBTAddr); 
+   gps_setup();
 }
 
 void loop() {
+  gps_read_into( &myBeaconData );
+
   delay(500); digitalWrite(LED_BUILTIN, HIGH);    
   delay(500); digitalWrite(LED_BUILTIN, LOW);    
 }
